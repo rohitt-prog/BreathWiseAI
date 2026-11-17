@@ -27,7 +27,7 @@ export const ExplanationModal: React.FC = () => {
             <div>
               <p className="font-semibold text-slate-900 dark:text-white">1. Environmental Baseline (Simulated Demo Scenario)</p>
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                Demonstration scenario modeled after winter conditions (Simulated PM2.5: 218.4 µg/m³, Category: Very Poor). Surface wind speed is 4.2 km/h with an illustrative 210m shallow temperature inversion ceiling. Live CPCB and OpenAQ API connectivity is scheduled for Phase 4.
+                Demonstration scenario modeled after winter conditions (Simulated PM2.5: 218.4 µg/m³, Category: Very Poor). Surface wind speed is 4.2 km/h with an illustrative 210m shallow boundary layer mixing height indicating potentially unfavorable dispersion conditions (this heuristic indicator does not establish a confirmed vertical temperature inversion). Current integration status: Open-Meteo provides modelled atmospheric chemistry forecasts, OpenAQ supports physical sensor monitoring when configured with a valid API key, and official CPCB CAAQMS access remains pending authorized portal credentials.
               </p>
             </div>
           </div>

@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../../stores/useAppStore';
 import { MOCK_DAILY_PLAN } from '../../services/mockData';
-import { 
-  Calendar, 
-  ShieldAlert, 
-  Clock, 
-  HelpCircle, 
-  ThumbsUp, 
-  ThumbsDown, 
-  Check, 
+import {
+  Calendar,
+  ShieldAlert,
+  Clock,
+  HelpCircle,
+  ThumbsUp,
+  ThumbsDown,
+  Check,
   Sparkles,
   Layers
 } from 'lucide-react';
@@ -28,7 +28,7 @@ export const PlannerPage: React.FC = () => {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      
+
       {/* Header & Context Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131B2E] border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
@@ -46,7 +46,7 @@ export const PlannerPage: React.FC = () => {
               {plan.date} (Simulated)
             </span>
             <span>•</span>
-            <span>Scenario: {plan.targetLocation.name} (Simulated AQI {plan.targetLocation.aqi})</span>
+            <span>Scenario: {plan.targetLocation.name} (AQI: {plan.targetLocation.aqi ?? 'Awaiting CPCB'})</span>
             <span>•</span>
             <span className="capitalize">Persona: {userPreferences.personaType}</span>
             {userPreferences.hasSensitiveMembers && (
@@ -146,7 +146,7 @@ export const PlannerPage: React.FC = () => {
 
               {/* Action Content Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
-                
+
                 {/* Exposure Reduction Box */}
                 <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1">
                   <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs uppercase tracking-wider block">

@@ -69,7 +69,7 @@ export const LandingPage: React.FC = () => {
           </div>
           <h3 className="font-bold text-slate-900 dark:text-white text-lg">CPCB NAQI Standards</h3>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-            Direct adherence to India's official 8-pollutant NAQI framework. (Currently operating in demo mode with simulated scenarios; live CPCB integration scheduled for Phase 4).
+            Direct adherence to India's official 8-pollutant NAQI framework. (Open-Meteo provides atmospheric chemistry forecasts, OpenAQ supports physical monitors when configured with an API key, and official CPCB access remains pending verified portal credentials).
           </p>
         </div>
 
@@ -138,7 +138,7 @@ export const LandingPage: React.FC = () => {
               <span>BreatheWise AI</span>
             </div>
             <ul className="text-xs text-slate-300 space-y-2">
-              <li>✓ Hourly itinerary synchronized with inversion layers.</li>
+              <li>✓ Hourly itinerary synchronized with boundary layer dispersion dynamics.</li>
               <li>✓ Identifies Delhi Metro as achieving low emissions AND low personal exposure.</li>
               <li>✓ Room-by-room ventilation windows and purifier recirculation mode.</li>
               <li>✓ Total provenance transparency: Discloses ground stations vs modelled forecasts vs demo scenarios.</li>

@@ -29,7 +29,7 @@ export const MOCK_AIR_QUALITY_DATA: Record<string, CurrentAirQualityData> = {
       indexSystem: 'India National AQI Framework (Simulated Scenario)'
     },
     healthAdvisory: {
-      summary: 'Hazardous particulate concentration driven by low boundary layer inversion and local vehicular/biomass emissions.',
+      summary: 'Hazardous particulate concentration driven by shallow boundary layer mixing and local vehicular/biomass emissions.',
       maskRecommendation: 'Sealed N95 / FFP2 respirator mandatory when outdoors.',
       outdoorActivityLevel: 'Strictly avoid jogging, brisk walking, or heavy exertion.'
     },
@@ -114,8 +114,9 @@ export const MOCK_AIR_QUALITY_DATA: Record<string, CurrentAirQualityData> = {
       windDirectionDegrees: 310,
       windDirectionCardinal: 'NW',
       boundaryLayerHeightMeters: 210,
-      inversionRisk: 'Severe',
-      stagnationDescription: 'Calm North-Westerly air with shallow 210m inversion ceiling trapping surface pollutants.'
+      stagnationRisk: 'Elevated',
+      dispersionConditions: 'Potentially Unfavorable',
+      stagnationDescription: 'Calm North-Westerly air (4.2 km/h) with shallow 210m boundary layer height indicating potentially unfavorable dispersion conditions.'
     },
     forecast: [
       { time: '11:00', modelledAqiEstimate: 368, category: 'Very Poor', pm25Modelled: 218, pm10Modelled: 342, windSpeedKmh: 4.2 },
@@ -154,7 +155,7 @@ export const MOCK_DAILY_PLAN: DailyActionPlan = {
       sustainableChoice: 'Avoid solo private car travel; taking mass transit abates ~1.8 kg CO2.',
       requiresMask: true,
       maskType: 'n95_respirator',
-      scientificRationale: 'Morning ground inversion caps toxic exhaust below 210m height.',
+      scientificRationale: 'Shallow morning boundary layer limits vertical dispersion below 210m height.',
       category: 'commute'
     },
     {
@@ -163,7 +164,7 @@ export const MOCK_DAILY_PLAN: DailyActionPlan = {
       period: 'afternoon',
       smogRisk: 'moderate',
       activityTitle: 'Midday Errand & Office Ventilation Check',
-      recommendedAction: 'If outdoor chores are unavoidable, this window has the lowest diurnal PM2.5 concentration (solar warming elevates inversion boundary).',
+      recommendedAction: 'If outdoor chores are unavoidable, this window has the lowest diurnal PM2.5 concentration (solar warming elevates the mixing ceiling).',
       exposureMitigation: 'Combine errands into a single trip. Keep office doors closed.',
       sustainableChoice: 'Share delivery routes or group errands with colleagues.',
       requiresMask: true,
@@ -182,7 +183,7 @@ export const MOCK_DAILY_PLAN: DailyActionPlan = {
       sustainableChoice: 'Order groceries pooled together rather than requesting individual quick-commerce dashes during peak smog.',
       requiresMask: true,
       maskType: 'n95_respirator',
-      scientificRationale: 'Post-sunset temperature inversion causes sharp secondary pollution peak.',
+      scientificRationale: 'Post-sunset boundary layer shallowing causes sharp secondary pollution peak.',
       category: 'commute'
     },
     {

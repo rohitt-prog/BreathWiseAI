@@ -1,0 +1,195 @@
+# BreatheWise AI — FastAPI Backend Service
+
+Production-oriented Python FastAPI service providing normalized, validated, and transparent environmental intelligence for BreatheWise AI.
+
+---
+
+## 1. Overview & Architectural Philosophy
+
+The BreatheWise AI backend bridges real-world atmospheric chemistry models, physical air quality monitoring networks, and meteorological telemetry with a modern React frontend.
+
+### Core Data Integrity & Scientific Principles
+1. **Strict Data Classification**: Every reading is strictly classified as either `OBSERVATION` (physical sensor measurement), `MODELLED_FORECAST` (atmospheric chemistry/weather model output), or `SIMULATED_DEMO`. Modelled outputs are **never** presented as live physical ground stations.
+2. **Statutory Indian NAQI Integrity**: Official Indian National Air Quality Index (NAQI) requires statutory multi-pollutant measurements conforming to CPCB guidelines (24-hour averaging for PM2.5, PM10, NO2, SO2, NH3, Pb; 8-hour averaging for CO and O3; minimum 3 pollutants with at least one PM pollutant). If verified statutory data is unavailable, the backend returns `indian_naqi = null` alongside an explicit explanatory reason rather than fabricating or mislabeling international scales (such as US AQI or European AQI).
+3. **Atmospheric Dispersion & Stagnation Heuristics**: Surface meteorological observations are synthesized with atmospheric boundary layer height ($h_{\text{PBL}}$) to assess atmospheric dispersion conditions and stagnation risk. The service clearly documents this as a heuristic indicator and **never claims a confirmed temperature inversion** or complete particulate trapping without vertical temperature profile soundings ($\partial T / \partial z > 0$).
+4. **Separation of Retrieval Freshness and Forecast Validity**:
+   - `retrieved_at`: UTC timestamp when backend retrieved the provider response.
+   - `retrieval_freshness`: `FRESH` (<60m), `RECENT` (60-180m), or `STALE` (>180m).
+   - `forecast_timestamp`: Timestep represented by the forecast value.
+   - `forecast_validity`: `CURRENT_PERIOD` (±60m), `FUTURE_PERIOD`, or `HISTORICAL_PERIOD`.
+   - `model_run_timestamp` / `model_data_available_at`: Strictly `null` when unexposed by provider (no invented metadata).
+5. **Dominant Pollutant Scientific Integrity**: Raw concentrations across differing units ($\text{mg/m}^3$ vs $\mu\text{g/m}^3$) or toxicological potencies are **never compared directly**. For modelled data, dominant pollutant is derived from dimensionless exceedance ratios against official Indian National Ambient Air Quality Standards (NAAQS) benchmarks and explicitly labeled as a screening heuristic.
+6. **No Scraping & Graceful Degradation**: Adheres strictly to the National Data Sharing and Accessibility Policy (NDSAP). Unconfigured or rate-limited third-party providers gracefully degrade without crashing or breaking dependent frontend workflows.
+
+---
+
+## 2. Architecture & Data Flow
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                    External Data Providers                      │
+├───────────────────────┬────────────────────────┬────────────────┤
+│ Open-Meteo CAMS       │ OpenAQ v3              │ CPCB (India)   │
+│ (Atmospheric Models)  │ (Physical Sensors)     │ (Statutory)    │
+└──────────┬────────────┴───────────┬────────────┴───────┬────────┘
+           │                        │                    │
+           ▼                        ▼                    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│               Provider Adapters (app/providers/)                │
+│ - open_meteo.py: CAMS chemistry + boundary layer meteorology    │
+│ - openaq.py: Physical station discovery & latest measurements   │
+│ - cpcb.py: Statutory CAAQMS integration & 8-pollutant formulas  │
+└───────────────────────────────────┬─────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              Validation & Normalization Engine                  │
+│                      (app/services/)                            │
+│ - Geographic coordinate validation (-90/90, -180/180)           │
+│ - Concentration physical bounds & unit normalization (µg / mg)  │
+│ - Retrieval freshness & forecast validity window separation     │
+│ - NAAQS dimensionless benchmark ratios for dominant pollutant   │
+│ - Boundary layer height & dispersion/stagnation heuristics      │
+└───────────────────────────────────┬─────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              FastAPI API Layer (app/api/routes/)                │
+│ - GET /health & /api/v1/health                                  │
+│ - GET /api/v1/providers/status                                  │
+│ - GET /api/v1/air-quality/current                               │
+│ - GET /api/v1/air-quality/forecast                              │
+│ - GET /api/v1/weather/current                                   │
+└───────────────────────────────────┬─────────────────────────────┘
+                                    │
+                                    ▼
+                           React 18 Frontend
+```
+
+---
+
+## 3. Directory Structure
+
+```text
+backend/
+├── app/
+│   ├── api/
+│   │   └── routes/
+│   │       ├── air_quality.py      # Air quality current & forecast endpoints
+│   │       ├── health.py           # Health check endpoints
+│   │       ├── providers.py        # Environmental provider telemetry status
+│   │       └── weather.py          # Weather & dispersion conditions endpoints
+│   ├── core/
+│   │   ├── config.py               # Pydantic Settings & environment variables
+│   │   ├── exceptions.py           # Domain exception classes & HTTP mappings
+│   │   └── logging.py              # Key-scrubbing audit logger
+│   ├── providers/
+│   │   ├── base.py                 # Abstract provider interfaces
+│   │   ├── cpcb.py                 # CPCB statutory formulas & integration stub
+│   │   ├── open_meteo.py           # Open-Meteo CAMS & NWP implementation
+│   │   └── openaq.py               # OpenAQ v3 physical monitor implementation
+│   ├── schemas/
+│   │   ├── air_quality.py          # Air quality request/response Pydantic schemas
+│   │   ├── common.py               # Enums, coordinates, and error schemas
+│   │   ├── providers.py            # Provider status Pydantic schemas
+│   │   └── weather.py              # Weather & dispersion Pydantic schemas
+│   ├── services/
+│   │   ├── air_quality_service.py  # Air quality aggregation & fallback orchestrator
+│   │   ├── data_validation.py      # Physical bounds, units & dispersion heuristics
+│   │   └── weather_service.py      # Weather & boundary layer orchestrator
+│   └── main.py                     # FastAPI application factory & middleware
+├── tests/
+│   ├── test_air_quality_service.py # Orchestrator unit tests
+│   ├── test_api_endpoints.py       # FastAPI HTTP endpoint tests
+│   ├── test_health.py              # Health check tests
+│   ├── test_open_meteo.py          # Open-Meteo provider unit tests
+│   ├── test_openaq.py              # OpenAQ provider unit tests
+│   └── test_validation.py          # Validation rules, CPCB math, & dominant pollutant tests
+├── verify_live.py                  # Live network integration test script
+├── requirements.txt                # Production & test dependencies
+├── pytest.ini                      # Pytest configuration
+├── .env.example                    # Environment variable template
+└── README.md                       # Service documentation
+```
+
+---
+
+## 4. Setup & Installation
+
+### Prerequisites
+- Python 3.11+
+- pip
+
+### Step-by-Step Installation
+1. Navigate to the `backend/` directory:
+   ```bash
+   cd backend
+   ```
+
+2. Create a virtual environment:
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Configure environment variables:
+   ```bash
+   cp .env.example .env
+   ```
+   *Edit `.env` if you have an OpenAQ API key (`OPENAQ_API_KEY`). If omitted, the backend runs smoothly with Open-Meteo.*
+
+5. Run the development server:
+   ```bash
+   uvicorn app.main:app --reload --port 8000
+   ```
+   The interactive API docs are available at: `http://localhost:8000/docs`.
+
+---
+
+## 5. API Reference
+
+### 1. Health Checks
+- `GET /health` or `GET /api/v1/health`
+  - Returns service status, version, uptime, and provider operational statuses.
+
+### 2. Providers Status
+- `GET /api/v1/providers/status`
+  - Returns metadata, configuration state, classification, and caveats for all providers.
+
+### 3. Current Air Quality
+- `GET /api/v1/air-quality/current?latitude={lat}&longitude={lon}`
+  - Returns normalized current pollutant concentrations (`PM2.5`, `PM10`, `NO2`, `SO2`, `CO`, `O3`).
+  - Strict compliance: `indian_naqi` is `null` with explicit `indian_naqi_unavailable_reason` if certified CPCB data is unavailable.
+  - Dominant pollutant derived from NAAQS dimensionless exceedance ratios with documented methodology.
+  - Returns separate `retrieved_at`, `observed_at` (null for model data), `forecast_timestamp`, and `retrieval_freshness`.
+
+### 4. Air Quality Forecast
+- `GET /api/v1/air-quality/forecast?latitude={lat}&longitude={lon}&hours={hours}`
+  - Returns hourly forecast points (up to 48 hours) derived from CAMS atmospheric chemistry models.
+
+### 5. Current Weather & Dispersion Conditions
+- `GET /api/v1/weather/current?latitude={lat}&longitude={lon}`
+  - Returns ambient temperature, relative humidity, 10m wind speed, cardinal wind direction, and atmospheric boundary layer height in meters.
+  - Returns documented dispersion conditions (`Potentially Unfavorable`, `Moderate`, `Favorable`) and stagnation risk (`Elevated`, `Moderate`, `Low`).
+  - Never claims a confirmed thermal inversion without atmospheric sounding profiles.
+
+---
+
+## 6. Testing & Verification
+
+### Run Automated Unit Tests (Offline / Mocked)
+```bash
+PYTHONPATH=. pytest
+```
+*Current test suite: 30 automated tests across 6 test modules.*
+
+### Run Live Network Verification
+```bash
+PYTHONPATH=. python verify_live.py
+```
+*Performs live queries against real Open-Meteo atmospheric chemistry and numerical weather endpoints.*

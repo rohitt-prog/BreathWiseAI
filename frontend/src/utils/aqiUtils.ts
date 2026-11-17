@@ -1,16 +1,17 @@
 import { AQICategory } from '../types/airQuality';
-import { 
-  CheckCircle2, 
-  Smile, 
-  AlertTriangle, 
-  AlertCircle, 
-  ShieldAlert, 
+import {
+  CheckCircle2,
+  Smile,
+  AlertTriangle,
+  AlertCircle,
+  ShieldAlert,
   Skull,
-  LucideIcon 
+  HelpCircle,
+  LucideIcon
 } from 'lucide-react';
 
 export interface AQIMetadata {
-  category: AQICategory;
+  category: AQICategory | 'Unavailable';
   range: string;
   bgClass: string;
   textClass: string;
@@ -22,7 +23,22 @@ export interface AQIMetadata {
   healthSummary: string;
 }
 
-export function getAQIMetadata(aqi: number): AQIMetadata {
+export function getAQIMetadata(aqi: number | null | undefined): AQIMetadata {
+  if (aqi === null || aqi === undefined) {
+    return {
+      category: 'Unavailable',
+      range: 'Awaiting CPCB Verification',
+      bgClass: 'bg-slate-500',
+      textClass: 'text-white',
+      borderClass: 'border-slate-400',
+      badgeClass: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700',
+      hexCode: '#64748B',
+      icon: HelpCircle,
+      nonColorLabel: 'Official NAQI Unavailable (Modelled Telemetry Only)',
+      healthSummary: 'Official Indian NAQI is unavailable because certified physical ground station observations from CPCB are not connected. Atmospheric chemistry model forecasts are available below.',
+    };
+  }
+
   if (aqi <= 50) {
     return {
       category: 'Good',

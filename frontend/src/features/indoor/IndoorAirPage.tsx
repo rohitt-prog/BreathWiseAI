@@ -2,11 +2,11 @@ import React from 'react';
 import { MOCK_DAILY_PLAN, MOCK_AIR_QUALITY_DATA } from '../../services/mockData';
 import { useAppStore } from '../../stores/useAppStore';
 import { getAQIMetadata } from '../../utils/aqiUtils';
-import { 
-  Home, 
-  AlertOctagon, 
-  Sparkles, 
-  XCircle, 
+import {
+  Home,
+  AlertOctagon,
+  Sparkles,
+  XCircle,
   Check,
   Info
 } from 'lucide-react';
@@ -77,6 +77,7 @@ export const IndoorAirPage: React.FC = () => {
   const isSevereOrVeryPoor = category === 'Very Poor' || category === 'Severe';
   const isPoor = category === 'Poor';
   const isModerate = category === 'Moderate';
+  const isUnavailable = category === 'Unavailable';
 
   const ventilationTitle = isSevereOrVeryPoor
     ? 'RESTRICT OUTDOOR AIR INFILTRATION'
@@ -92,11 +93,13 @@ export const IndoorAirPage: React.FC = () => {
     ? `Ambient air is currently in the Poor category (201–300). Minimize opening external windows to limit outdoor particulate infiltration, while prioritizing internal air filtration and kitchen exhaust to manage indoor air needs.`
     : isModerate
     ? `Ambient air is in the Moderate category (101–200). Any ventilation decision must consider immediate outdoor conditions (such as street dust, smoke, and traffic) alongside indoor air needs; brief airing may be evaluated if indoor air is stuffy, but do not automatically open windows.`
+    : isUnavailable
+    ? `Official Indian NAQI is currently unavailable pending certified CPCB ground station connection. Atmospheric chemistry models report ambient conditions. Households should balance outdoor infiltration against indoor air needs (cooking exhaust, internal filtration) and inspect local immediate conditions before opening windows.`
     : `Ambient air is in the ${category} category (${range}). Outdoor air is relatively cleaner; conditional ventilation may be considered to refresh indoor air, but households must evaluate immediate outdoor conditions and indoor air needs rather than automatically opening windows based on AQI alone.`;
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      
+
       {/* Page Title & Status */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131B2E] border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
@@ -109,14 +112,14 @@ export const IndoorAirPage: React.FC = () => {
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Adapting residential ventilation and filtration to ambient air conditions (Simulated Scenario AQI: {aqData.aqi} • {category})
+            Adapting residential ventilation and filtration to ambient air conditions (AQI: {aqData.aqi ?? 'Awaiting CPCB'} • {category})
           </p>
         </div>
 
         {/* Master Ventilation Verdict (Conditional on Indian NAQI Category) */}
         <div className={clsx(
           'flex items-center gap-2.5 p-3 rounded-xl border',
-          isSevereOrVeryPoor 
+          isSevereOrVeryPoor
             ? 'bg-red-100 dark:bg-red-950/60 border-red-300 dark:border-red-800 text-red-950 dark:text-red-200'
             : isPoor
             ? 'bg-orange-100 dark:bg-orange-950/60 border-orange-300 dark:border-orange-800 text-orange-950 dark:text-orange-200'
@@ -171,12 +174,12 @@ export const IndoorAirPage: React.FC = () => {
                 {NAQI_VENTILATION_DECISION_TABLE.map((tier) => {
                   const isCurrentTier = tier.category === category;
                   return (
-                    <tr 
-                      key={tier.category} 
+                    <tr
+                      key={tier.category}
                       className={clsx(
                         'transition-colors',
-                        isCurrentTier 
-                          ? 'bg-emerald-50/70 dark:bg-emerald-950/30 font-medium' 
+                        isCurrentTier
+                          ? 'bg-emerald-50/70 dark:bg-emerald-950/30 font-medium'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
                       )}
                     >
@@ -228,7 +231,7 @@ export const IndoorAirPage: React.FC = () => {
 
       {/* Room-by-Room Optimization Protocols */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
+
         {/* Living Room */}
         <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131B2E] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">

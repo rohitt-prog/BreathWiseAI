@@ -23,7 +23,7 @@ export const ForecastStrip: React.FC<ForecastStripProps> = ({ forecast }) => {
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Diurnal variation driven by nighttime temperature inversions and daytime solar thermal lifting
+            Diurnal variation driven by nighttime boundary layer shallowing and daytime solar thermal lifting
           </p>
         </div>
 
