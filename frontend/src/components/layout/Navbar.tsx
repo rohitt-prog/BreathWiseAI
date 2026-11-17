@@ -81,19 +81,19 @@ export const Navbar: React.FC = () => {
           })}
         </nav>
 
-        {/* Live AQI Badge & Utilities */}
+        {/* Demo AQI Indicator & Utilities */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Real-time AQI Indicator */}
+          {/* Demo AQI Indicator */}
           <div 
             className={clsx(
               'hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border',
               aqiMeta.badgeClass
             )}
-            title={`Current Air Quality: ${aqData.aqi} (${aqiMeta.category})`}
+            title={`Demo Air Quality Scenario: ${aqData.aqi} (${aqiMeta.category}) - Live CPCB integration pending`}
           >
             <ShieldAlert className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
             <span>AQI {aqData.aqi}</span>
-            <span className="text-[10px] uppercase tracking-wider font-extrabold">• {aqiMeta.category}</span>
+            <span className="text-[10px] uppercase tracking-wider font-extrabold">• {aqiMeta.category} (Demo)</span>
           </div>
 
           {/* Theme Toggle */}
@@ -138,7 +138,7 @@ export const Navbar: React.FC = () => {
             );
           })}
           <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 px-3">
-            <span>Current Station:</span>
+            <span>Scenario Node:</span>
             <span className="font-semibold text-slate-800 dark:text-slate-200">{currentLocObj.name}</span>
           </div>
         </div>

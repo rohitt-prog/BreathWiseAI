@@ -2,10 +2,10 @@ import { CurrentAirQualityData } from '../types/airQuality';
 import { DailyActionPlan, CommuteModeComparison } from '../types/planner';
 
 export const MOCK_LOCATIONS = [
-  { id: 'del_anand_vihar', name: 'Anand Vihar, Delhi', city: 'Delhi', lat: 28.6508, lon: 77.3152 },
-  { id: 'del_connaught_place', name: 'Connaught Place, Central Delhi', city: 'Delhi', lat: 28.6304, lon: 77.2177 },
-  { id: 'del_rohini', name: 'Rohini Sector 16, North-West Delhi', city: 'Delhi', lat: 28.7324, lon: 77.1215 },
-  { id: 'ggn_cyber_city', name: 'Cyber City, Gurugram', city: 'Gurugram', lat: 28.4950, lon: 77.0895 },
+  { id: 'del_anand_vihar', name: 'Anand Vihar (Demo Scenario)', city: 'Delhi', lat: 28.6508, lon: 77.3152 },
+  { id: 'del_connaught_place', name: 'Connaught Place (Demo Scenario)', city: 'Delhi', lat: 28.6304, lon: 77.2177 },
+  { id: 'del_rohini', name: 'Rohini Sector 16 (Demo Scenario)', city: 'Delhi', lat: 28.7324, lon: 77.1215 },
+  { id: 'ggn_cyber_city', name: 'Cyber City (Demo Scenario)', city: 'Gurugram', lat: 28.4950, lon: 77.0895 },
 ];
 
 export const MOCK_AIR_QUALITY_DATA: Record<string, CurrentAirQualityData> = {
@@ -15,18 +15,18 @@ export const MOCK_AIR_QUALITY_DATA: Record<string, CurrentAirQualityData> = {
     dominantPollutant: 'PM2.5',
     station: {
       id: 'del_anand_vihar',
-      name: 'Anand Vihar, Delhi — CPCB Monitoring Station',
+      name: 'Anand Vihar Scenario (Simulated Sensor)',
       distanceMeters: 1450,
       city: 'Delhi',
       state: 'Delhi',
       coordinates: { lat: 28.6508, lon: 77.3152 }
     },
     provenance: {
-      dataSource: 'CPCB_OFFICIAL',
-      qualityStatus: 'VERIFIED_OFFICIAL',
+      dataSource: 'SIMULATED_DEMO',
+      qualityStatus: 'SIMULATED_SCENARIO',
       recordedAt: '2026-11-29T10:00:00+05:30',
       freshnessMinutes: 18,
-      indexSystem: 'India National AQI (NAQI - 8 Pollutants)'
+      indexSystem: 'India National AQI Framework (Simulated Scenario)'
     },
     healthAdvisory: {
       summary: 'Hazardous particulate concentration driven by low boundary layer inversion and local vehicular/biomass emissions.',
@@ -202,7 +202,7 @@ export const MOCK_DAILY_PLAN: DailyActionPlan = {
   ],
   indoorProtocols: {
     ventilationPermitted: false,
-    ventilationReason: 'Outdoor PM2.5 (218 µg/m³) is 14x above WHO threshold. Natural ventilation will contaminate indoor air.',
+    ventilationReason: 'Simulated Scenario: Ambient particulate concentration is elevated (Very Poor category). Limit unnecessary outdoor air infiltration during this period while operating localized kitchen exhaust during cooking.',
     ventilationSafeHours: [],
     purifierRunningMode: 'High (Continuous Recirculation)',
     diyMitigationTips: [

@@ -17,12 +17,12 @@ export const LocationModal: React.FC = () => {
     <Modal
       isOpen={isLocationModalOpen}
       onClose={() => setLocationModalOpen(false)}
-      title="Select Air Quality Station"
+      title="Select Environmental Scenario (Demo Mode)"
       maxWidth="md"
     >
       <div className="space-y-4">
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Official real-time monitoring stations and hyper-local urban nodes:
+          Simulated urban air quality scenarios for interface testing:
         </p>
         
         <div className="space-y-2">
@@ -48,7 +48,7 @@ export const LocationModal: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-sm font-medium">{loc.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{loc.city} • Official CPCB Node</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{loc.city} • Simulated Node (Live Integration Pending)</p>
                   </div>
                 </div>
 
@@ -61,7 +61,7 @@ export const LocationModal: React.FC = () => {
         </div>
 
         <div className="pt-2 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-          <span>* India CPCB data updates hourly. Distance measured from city centroid.</span>
+          <span>* Phase 3 prototype mode. Live CPCB and OpenAQ API connectivity will be enabled in Phase 4.</span>
         </div>
       </div>
     </Modal>

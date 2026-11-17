@@ -25,9 +25,9 @@ export const ExplanationModal: React.FC = () => {
           <div className="flex items-start gap-3">
             <Database className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-slate-900 dark:text-white">1. Verified Environmental Ground Truth</p>
+              <p className="font-semibold text-slate-900 dark:text-white">1. Environmental Baseline (Simulated Demo Scenario)</p>
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                Data ingested from CPCB Anand Vihar ground monitor (PM2.5: 218 µg/m³, Category: Very Poor). Surface wind speed is 4.2 km/h, and European meteorological telemetry reports a shallow 210m temperature inversion ceiling trapping fine particulates at ground level.
+                Demonstration scenario modeled after winter conditions (Simulated PM2.5: 218.4 µg/m³, Category: Very Poor). Surface wind speed is 4.2 km/h with an illustrative 210m shallow temperature inversion ceiling. Live CPCB and OpenAQ API connectivity is scheduled for Phase 4.
               </p>
             </div>
           </div>
@@ -47,7 +47,7 @@ export const ExplanationModal: React.FC = () => {
             <div>
               <p className="font-semibold text-slate-900 dark:text-white">3. Google Gemini Structured Synthesis</p>
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                Gemini 1.5 Flash formulated practical schedule adjustments (recommending Delhi Metro over motorcycle travel to protect lungs while abating ~1.8kg CO2). The generated JSON was validated against strict Pydantic schemas, confirming zero medical diagnostic overreach and zero invented stats.
+                Structured AI Output Architecture: Recommending mass transit (Delhi Metro) over two-wheeler travel to protect respiratory health while abating vehicle emissions. In Phase 5, live Google Gemini API calls will run through these deterministic Pydantic safety guardrails.
               </p>
             </div>
           </div>

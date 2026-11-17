@@ -47,7 +47,7 @@ export const AlternativesPage: React.FC = () => {
 
         <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
           <Info className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>Active Route: Rohini Sector 16 ➔ Connaught Place (18 km)</span>
+          <span>Illustrative Route: Rohini Sector 16 ➔ Connaught Place (18 km, Simulated Scenario)</span>
         </div>
       </div>
 
@@ -65,7 +65,7 @@ export const AlternativesPage: React.FC = () => {
       {/* Mode Comparison Table / Grid */}
       <section className="space-y-4">
         <h2 className="text-base font-bold text-slate-900 dark:text-white">
-          Multi-Modal Commute Matrix
+          Multi-Modal Commute Matrix (Illustrative Evaluation)
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

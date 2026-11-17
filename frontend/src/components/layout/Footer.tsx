@@ -23,7 +23,7 @@ export const Footer: React.FC = () => {
               <span>Multi-Source Provenance</span>
             </div>
             <p className="leading-relaxed">
-              Ground measurements are sourced from CPCB & OpenAQ physical stations. Meteorological fields and hourly inversion trends are generated via atmospheric models (Open-Meteo). Atmospheric forecasts are clearly disclosed and never conflated with official ground station observations.
+              Architecture is engineered to ingest CPCB & OpenAQ physical stations and Open-Meteo atmospheric chemistry models. In this Phase 3 frontend prototype, environmental telemetry uses simulated urban scenarios; live backend API ingestion will activate in Phase 4.
             </p>
           </div>
 
@@ -42,10 +42,10 @@ export const Footer: React.FC = () => {
           <p>© 2026 BreatheWise AI • PromptWars Virtual (Challenge 6: Urban Air Quality Assistant)</p>
           <div className="flex items-center gap-4">
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              Deterministic Safety Engine: Active
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              Demo Mode: Simulated Scenarios
             </span>
-            <span>All 8 Pollutants Monitored</span>
+            <span>8 Pollutants Monitored</span>
           </div>
         </div>
       </div>

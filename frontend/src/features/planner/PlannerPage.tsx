@@ -36,17 +36,17 @@ export const PlannerPage: React.FC = () => {
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
               Personalized Daily Action Planner
             </h1>
-            <Badge variant="success" icon={Sparkles} size="sm">
-              Gemini + Safety Engine
+            <Badge variant="info" icon={Sparkles} size="sm">
+              Illustrative AI Plan (Demo)
             </Badge>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1">
             <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
               <Calendar className="w-3.5 h-3.5" />
-              {plan.date}
+              {plan.date} (Simulated)
             </span>
             <span>•</span>
-            <span>Target: {plan.targetLocation.name} (AQI {plan.targetLocation.aqi})</span>
+            <span>Scenario: {plan.targetLocation.name} (Simulated AQI {plan.targetLocation.aqi})</span>
             <span>•</span>
             <span className="capitalize">Persona: {userPreferences.personaType}</span>
             {userPreferences.hasSensitiveMembers && (

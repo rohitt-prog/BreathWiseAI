@@ -9,7 +9,8 @@ export type AQICategory =
 export type DataSourceProvenance = 
   | 'CPCB_OFFICIAL' 
   | 'OPENAQ_V3' 
-  | 'OPEN_METEO_MODELLED';
+  | 'OPEN_METEO_MODELLED'
+  | 'SIMULATED_DEMO';
 
 export interface StationMetadata {
   id: string;
@@ -60,7 +61,7 @@ export interface CurrentAirQualityData {
   station: StationMetadata;
   provenance: {
     dataSource: DataSourceProvenance;
-    qualityStatus: 'VERIFIED_OFFICIAL' | 'UNVERIFIED_SENSOR' | 'MODELLED_APPROXIMATION';
+    qualityStatus: 'VERIFIED_OFFICIAL' | 'UNVERIFIED_SENSOR' | 'MODELLED_APPROXIMATION' | 'SIMULATED_SCENARIO';
     recordedAt: string;
     freshnessMinutes: number;
     indexSystem: string;

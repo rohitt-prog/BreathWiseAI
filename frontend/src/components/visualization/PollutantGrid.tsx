@@ -18,7 +18,7 @@ export const PollutantGrid: React.FC<PollutantGridProps> = ({ pollutants }) => {
             India NAQI 8-Pollutant Breakout
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Official sub-indices computed via Central Pollution Control Board piecewise linear functions
+            Illustrative pollutant sub-indices. Official CPCB calculation integration pending.
           </p>
         </div>
         <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">

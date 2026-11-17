@@ -8,6 +8,18 @@ import { ExplanationModal } from './ExplanationModal';
 export const AppShell: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#090D16] text-slate-900 dark:text-slate-100 transition-colors">
+      {/* Persistent Demo Mode Transparency Banner (Phase 3 Requirement C1) */}
+      <div 
+        className="w-full bg-amber-500/15 dark:bg-amber-950/60 border-b border-amber-500/30 text-amber-950 dark:text-amber-200 py-2 px-4 text-center text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-sm"
+        role="status"
+        aria-label="Demo Mode Notice"
+      >
+        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" aria-hidden="true"></span>
+        <span>
+          <strong>DEMO MODE</strong> — Simulated environmental data. Live CPCB and OpenAQ integration is not connected.
+        </span>
+      </div>
+
       <Navbar />
       
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">

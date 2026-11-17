@@ -29,22 +29,22 @@ export const DashboardPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white">
             <Building2 className="w-4 h-4 text-emerald-600" />
-            <span>Station: {aqData.station.name}</span>
+            <span>Scenario Node: {aqData.station.name}</span>
           </div>
           <span className="hidden sm:inline text-slate-400">•</span>
           <div className="flex items-center gap-1">
             <Clock className="w-3.5 h-3.5 text-slate-400" />
-            <span>Updated {aqData.provenance.freshnessMinutes} mins ago</span>
+            <span>Simulated Telemetry (Live CPCB Pending)</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[11px]">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-[11px]">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Official CPCB Monitored</span>
+            <span>Simulated Station Scenario</span>
           </span>
           <button 
-            onClick={() => openExplanationModal(`Station Provenance: ${aqData.station.name} (CPCB Verified)`)}
+            onClick={() => openExplanationModal(`Scenario Node: ${aqData.station.name} (Simulated Demo Data)`)}
             className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
             title="Inspect Data Provenance & Safety Rules"
           >

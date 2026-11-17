@@ -32,7 +32,7 @@ export const LandingPage: React.FC = () => {
         </h1>
 
         <p className="text-base sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-          The GenAI-powered urban air quality assistant that converts official CPCB environmental telemetry into personalized daily routines, indoor air protection, and low-emission choices.
+          The GenAI-powered urban air quality assistant that converts environmental telemetry (architected for CPCB standards; currently in demo mode with simulated scenarios) into personalized daily routines, indoor air protection, and low-emission choices.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -67,9 +67,9 @@ export const LandingPage: React.FC = () => {
           <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 flex items-center justify-center">
             <Activity className="w-5 h-5" />
           </div>
-          <h3 className="font-bold text-slate-900 dark:text-white text-lg">Verified CPCB Data</h3>
+          <h3 className="font-bold text-slate-900 dark:text-white text-lg">CPCB NAQI Standards</h3>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-            Direct tracking of India's official 8-pollutant NAQI framework. Never fabricated or guessed from incomplete sensors.
+            Direct adherence to India's official 8-pollutant NAQI framework. (Currently operating in demo mode with simulated scenarios; live CPCB integration scheduled for Phase 4).
           </p>
         </div>
 
@@ -141,7 +141,7 @@ export const LandingPage: React.FC = () => {
               <li>✓ Hourly itinerary synchronized with inversion layers.</li>
               <li>✓ Identifies Delhi Metro as achieving low emissions AND low personal exposure.</li>
               <li>✓ Room-by-room ventilation windows and purifier recirculation mode.</li>
-              <li>✓ Total provenance transparency: CPCB ground truth vs Open-Meteo forecasts.</li>
+              <li>✓ Total provenance transparency: Discloses ground stations vs modelled forecasts vs demo scenarios.</li>
             </ul>
           </div>
         </div>

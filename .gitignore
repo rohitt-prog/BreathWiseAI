@@ -7,6 +7,9 @@ dist/
 dist-ssr/
 *.local
 .npm/
+*.tsbuildinfo
+coverage/
+.vitest/
 
 # Python virtual environment and bytecode
 __pycache__/
