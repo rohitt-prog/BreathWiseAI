@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-aqi-good: #16A34A;
+    --color-aqi-satisfactory: #65A30D;
+    --color-aqi-moderate: #CA8A04;
+    --color-aqi-poor: #EA580C;
+    --color-aqi-verypoor: #DC2626;
+    --color-aqi-severe: #7F1D1D;
+  }
+
+  body {
+    @apply transition-colors duration-200;
+  }
+}
+
+/* Accessibility focus rings */
+*:focus-visible {
+  @apply outline-none ring-2 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900;
+}
+
+/* Accessible hidden text for screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
