@@ -4,9 +4,72 @@
  * and graceful fallback to simulated demo scenarios when offline.
  */
 import { CurrentAirQualityData, PollutantDetail } from '../types/airQuality';
+import { AIInsightResponse, ActivityContext } from '../types/ai';
 import { MOCK_AIR_QUALITY_DATA } from './mockData';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+export const DEFAULT_DEMO_INSIGHTS: AIInsightResponse = {
+  location: {
+    latitude: 28.65,
+    longitude: 77.25,
+    name: 'Delhi Anand Vihar (Demo Scenario)'
+  },
+  activity_context: 'GENERAL',
+  status: 'SIMULATED_DEMO_INSIGHT',
+  model_id: null,
+  prompt_version: 'v1.0.0',
+  generated_at: new Date().toISOString(),
+  summary: 'Illustrative winter condition demo: elevated particulate levels under boundary layer stagnation.',
+  explanation: 'Curated scenario showing simulated particulate exposure and boundary layer dynamics. Start backend with GEMINI_API_KEY to generate live AI insights.',
+  supporting_factors: [
+    'Simulated PM2.5 elevation',
+    'Low boundary layer mixing ceiling',
+    'Deterministic safety guardrails verified'
+  ],
+  recommended_actions: [
+    {
+      action_id: 'ACT-PROTECT-N95-STREET',
+      category: 'PERSONAL_PROTECTION',
+      priority: 'HIGH',
+      title: 'Wear a certified N95 or FFP2 respirator for outdoor street transit',
+      rationale: 'Filters fine particulates effectively during roadside pedestrian travel.',
+      evidence_ids: ['EVID-PM25']
+    },
+    {
+      action_id: 'ACT-VENT-PURIFY-HEPA',
+      category: 'INDOOR_AIR',
+      priority: 'HIGH',
+      title: 'Operate mechanical HEPA air filtration continuously in recirculating mode',
+      rationale: 'Maintains clean indoor breathing baseline without generating secondary ozone.',
+      evidence_ids: ['EVID-PM25']
+    },
+    {
+      action_id: 'ACT-COMMUTE-REDUCE-EXPOSURE',
+      category: 'COMMUTE',
+      priority: 'MEDIUM',
+      title: 'Prioritize enclosed transit with filtered air over open roadside commuting',
+      rationale: 'Avoids direct breathing of fresh tailpipe emissions along heavy diesel corridors.',
+      evidence_ids: ['EVID-PM25']
+    }
+  ],
+  evidence_context: {
+    'EVID-PM25': {
+      evidence_id: 'EVID-PM25',
+      parameter: 'Fine Particulates (PM2.5)',
+      value: '218.4',
+      unit: 'µg/m³',
+      classification: 'SIMULATED_DEMO',
+      freshness: 'FRESH',
+      context_note: 'Curated demonstration scenario.'
+    }
+  },
+  source_classification: 'SIMULATED_DEMO',
+  quality_status: 'SIMULATED_SCENARIO',
+  retrieval_freshness: 'FRESH',
+  limitations: ['Curated demonstration scenario; start backend for live environmental data.'],
+  fallback_reason: 'Backend offline; operating in simulated demonstration mode.'
+};
 
 export interface ProviderStatus {
   provider_id: string;
@@ -69,6 +132,38 @@ export class ApiClient {
       throw new Error(`Forecast request failed with HTTP ${res.status}`);
     }
     return res.json();
+  }
+
+  async fetchAIInsights(
+    lat: number,
+    lon: number,
+    activityContext: ActivityContext = 'GENERAL'
+  ): Promise<AIInsightResponse> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/v1/ai/insights`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          latitude: lat,
+          longitude: lon,
+          activity_context: activityContext
+        })
+      });
+      if (!res.ok) {
+        throw new Error(`AI insights request failed with HTTP ${res.status}`);
+      }
+      return await res.json();
+    } catch {
+      // Graceful fallback to curated demo scenario when backend is offline or errors
+      return {
+        ...DEFAULT_DEMO_INSIGHTS,
+        location: {
+          latitude: lat,
+          longitude: lon,
+          name: `${lat.toFixed(2)}, ${lon.toFixed(2)} (Demo Scenario)`
+        }
+      };
+    }
   }
 
   /**

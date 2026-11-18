@@ -26,7 +26,8 @@ def create_application() -> FastAPI:
             {"name": "Health", "description": "System health and provider readiness checks"},
             {"name": "Air Quality", "description": "Current and forecast atmospheric composition telemetry"},
             {"name": "Weather", "description": "Surface meteorology and boundary layer dispersion telemetry"},
-            {"name": "Providers", "description": "Operational status and provenance for environmental data sources"}
+            {"name": "Providers", "description": "Operational status and provenance for environmental data sources"},
+            {"name": "AI Intelligence Engine", "description": "Evidence-grounded Google Gemini recommendations governed by deterministic safety"}
         ]
     )
 

@@ -25,9 +25,9 @@ export const ExplanationModal: React.FC = () => {
           <div className="flex items-start gap-3">
             <Database className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-slate-900 dark:text-white">1. Environmental Baseline (Simulated Demo Scenario)</p>
+              <p className="font-semibold text-slate-900 dark:text-white">1. Environmental Telemetry Ingest & Provenance</p>
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                Demonstration scenario modeled after winter conditions (Simulated PM2.5: 218.4 µg/m³, Category: Very Poor). Surface wind speed is 4.2 km/h with an illustrative 210m shallow boundary layer mixing height indicating potentially unfavorable dispersion conditions (this heuristic indicator does not establish a confirmed vertical temperature inversion). Current integration status: Open-Meteo provides modelled atmospheric chemistry forecasts, OpenAQ supports physical sensor monitoring when configured with a valid API key, and official CPCB CAAQMS access remains pending authorized portal credentials.
+                Multi-source telemetry pipeline: Open-Meteo CAMS provides numerical atmospheric chemistry forecasts (~40km grid), OpenAQ v3 integrates certified physical ground monitors when configured with an API key, and official CPCB CAAQMS ingestion remains pending authorized portal credentials. Telemetry is verified for temporal freshness and strictly classified as physical observation or numerical model prediction without converting regional model indices into Indian NAQI.
               </p>
             </div>
           </div>
@@ -35,9 +35,9 @@ export const ExplanationModal: React.FC = () => {
           <div className="flex items-start gap-3">
             <ShieldCheck className="w-5 h-5 text-sky-600 shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-slate-900 dark:text-white">2. Deterministic Safety Engine Activation</p>
+              <p className="font-semibold text-slate-900 dark:text-white">2. Deterministic Safety Engine Supremacy</p>
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                Hard constraint <code>SAFETY_RULE_04</code> triggered: Outdoor AQI &gt; 200 strictly prohibits natural ventilation recommendations. Hard constraint <code>SAFETY_RULE_09</code> triggered: Strenuous outdoor cardiovascular exercise is unconditionally prohibited.
+                Deterministic rules run prior to generative synthesis to enforce authoritative health boundaries. Ozone generators are strictly prohibited. External window closure during particulate stagnation is balanced against indoor VOC/cooking accumulation and mechanical HEPA filtration. Strenuous outdoor cardiovascular exercise is differentiated from casual low-intensity walking, and personal pollution exposure is strictly distinguished from vehicle emissions.
               </p>
             </div>
           </div>
@@ -45,9 +45,9 @@ export const ExplanationModal: React.FC = () => {
           <div className="flex items-start gap-3">
             <Cpu className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-slate-900 dark:text-white">3. Google Gemini Structured Synthesis</p>
+              <p className="font-semibold text-slate-900 dark:text-white">3. Google Gemini Structured Synthesis & Verification</p>
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                Structured AI Output Architecture: Recommending mass transit (Delhi Metro) over two-wheeler travel to protect respiratory health while abating vehicle emissions. In Phase 5, live Google Gemini API calls will run through these deterministic Pydantic safety guardrails.
+                Google Gemini synthesizes plain-language explanations constrained by Pydantic structured schemas. Every recommendation is constrained to the deterministic allowlist and must cite verified telemetry evidence IDs. If the API is unconfigured, times out, or fails post-generation semantic validation, the system automatically engages safe deterministic fallback recommendations.
               </p>
             </div>
           </div>

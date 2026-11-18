@@ -14,6 +14,9 @@ from .data_validation import (
 )
 from .air_quality_service import AirQualityService, air_quality_service
 from .weather_service import WeatherService, weather_service
+from .evidence_builder import build_evidence_context
+from .deterministic_safety import DeterministicSafetyEngine, CANONICAL_ACTIONS
+from .ai_service import AIService, ai_service
 
 __all__ = [
     "validate_coordinates",
@@ -30,5 +33,10 @@ __all__ = [
     "AirQualityService",
     "air_quality_service",
     "WeatherService",
-    "weather_service"
+    "weather_service",
+    "build_evidence_context",
+    "DeterministicSafetyEngine",
+    "CANONICAL_ACTIONS",
+    "AIService",
+    "ai_service"
 ]

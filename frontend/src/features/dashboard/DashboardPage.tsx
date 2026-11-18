@@ -34,6 +34,13 @@ export const DashboardPage: React.FC = () => {
     refetchOnWindowFocus: false
   });
 
+  const { data: aiInsights, isLoading: isAILoading } = useQuery({
+    queryKey: ['aiInsights', currentLocationId, currentLocObj.lat, currentLocObj.lon],
+    queryFn: () => apiClient.fetchAIInsights(currentLocObj.lat, currentLocObj.lon),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false
+  });
+
   // A network failure or missing live flag strictly forces isLive to false
   const isLive = !isError && Boolean(telemetry?.isLive);
   const aqData = isLive && telemetry ? telemetry.data : (MOCK_AIR_QUALITY_DATA[currentLocationId] || MOCK_AIR_QUALITY_DATA['del_anand_vihar']);
@@ -112,41 +119,133 @@ export const DashboardPage: React.FC = () => {
       </section>
 
       {/* Immediate Action Directives Banner (GenAI + Safety Engine) */}
-      <section className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-emerald-900 to-slate-900 text-white shadow-lg space-y-4">
-        <div className="flex items-center justify-between">
+      <section className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-emerald-900 via-slate-900 to-slate-950 text-white shadow-lg space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-emerald-400" />
-            <h3 className="font-bold text-base sm:text-lg">Today's Immediate Action Directives</h3>
+            <h3 className="font-bold text-base sm:text-lg">Today's Evidence-Grounded Directives</h3>
           </div>
-          <span className="text-[11px] font-semibold text-emerald-300 bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-700/50">
-            Safety Guardrails Verified
-          </span>
+          {(() => {
+            const status = aiInsights?.status;
+            let statusBadge = {
+              text: 'Deterministic Safety Rules',
+              classes: 'bg-emerald-950/80 text-emerald-300 border-emerald-700/50',
+              icon: ShieldCheck
+            };
+            if (status === 'GENERATED') {
+              statusBadge = {
+                text: 'Google Gemini Synthesized',
+                classes: 'bg-emerald-950/90 text-emerald-200 border-emerald-500/60 shadow-sm',
+                icon: Sparkles
+              };
+            } else if (status === 'FALLBACK_NO_API_KEY') {
+              statusBadge = {
+                text: 'Deterministic Rule Engine (No Gemini Key)',
+                classes: 'bg-sky-950/80 text-sky-300 border-sky-700/50',
+                icon: ShieldCheck
+              };
+            } else if (status === 'FALLBACK_MODEL_ERROR' || status === 'FALLBACK_VALIDATION_ERROR') {
+              statusBadge = {
+                text: 'Deterministic Safety Override',
+                classes: 'bg-amber-950/80 text-amber-300 border-amber-700/50',
+                icon: ShieldCheck
+              };
+            } else if (status === 'FALLBACK_STALE_DATA' || status === 'FALLBACK_INVALID_DATA') {
+              statusBadge = {
+                text: 'Baseline Guidance (Telemetry Unverified)',
+                classes: 'bg-rose-950/80 text-rose-300 border-rose-700/50',
+                icon: AlertTriangle
+              };
+            } else if (status === 'SIMULATED_DEMO_INSIGHT') {
+              statusBadge = {
+                text: 'Curated Demo Guidance (Backend Offline)',
+                classes: 'bg-amber-950/80 text-amber-300 border-amber-700/50',
+                icon: ShieldCheck
+              };
+            }
+            const StatusIcon = statusBadge.icon;
+            return (
+              <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${statusBadge.classes}`}>
+                <StatusIcon className="w-3.5 h-3.5" />
+                <span>{statusBadge.text}</span>
+              </span>
+            );
+          })()}
         </div>
 
+        {/* AI Plain-Language Context Summary */}
+        {aiInsights?.summary && (
+          <p className="text-xs sm:text-sm text-slate-300 border-l-2 border-emerald-500/70 pl-3 py-0.5">
+            {aiInsights.summary}
+          </p>
+        )}
+
+        {/* Action Directives Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs sm:text-sm">
-          <div className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-1">
-            <span className="font-bold text-emerald-400 text-xs uppercase tracking-wider block">Commute Action</span>
-            <p className="text-slate-200">Switch motorized commute to Delhi Metro. Wear an N95 respirator for street ingress.</p>
-          </div>
+          {isAILoading ? (
+            <>
+              <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50 animate-pulse h-28" />
+              <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50 animate-pulse h-28" />
+              <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50 animate-pulse h-28" />
+            </>
+          ) : (
+            (aiInsights?.recommended_actions || []).map((action) => {
+              const priorityColor =
+                action.priority === 'HIGH'
+                  ? 'text-rose-400 bg-rose-950/60 border-rose-800/60'
+                  : action.priority === 'MEDIUM'
+                  ? 'text-amber-400 bg-amber-950/60 border-amber-800/60'
+                  : 'text-sky-400 bg-sky-950/60 border-sky-800/60';
 
-          <div className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-1">
-            <span className="font-bold text-amber-400 text-xs uppercase tracking-wider block">Indoor Protocol</span>
-            <p className="text-slate-200">Keep windows sealed. Run HEPA air purifier on continuous medium speed.</p>
-          </div>
+              const categoryLabel = action.category.replace('_', ' ');
 
-          <div className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-1">
-            <span className="font-bold text-sky-400 text-xs uppercase tracking-wider block">Exposure vs Emission</span>
-            <p className="text-slate-200">Avoid cycling through heavy traffic today; high PM2.5 lung intake outweighs emission gains.</p>
-          </div>
+              return (
+                <div
+                  key={action.action_id}
+                  className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 flex flex-col justify-between space-y-2 hover:border-slate-600 transition-colors"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-bold text-emerald-400 text-[11px] uppercase tracking-wider block truncate">
+                        {categoryLabel}
+                      </span>
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border uppercase shrink-0 ${priorityColor}`}>
+                        {action.priority}
+                      </span>
+                    </div>
+                    <p className="font-medium text-slate-100 text-xs sm:text-sm leading-snug">
+                      {action.title}
+                    </p>
+                    <p className="text-slate-300 text-xs leading-relaxed">
+                      {action.rationale}
+                    </p>
+                  </div>
+
+                  {action.evidence_ids && action.evidence_ids.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-700/50">
+                      {action.evidence_ids.map((eid) => (
+                        <span
+                          key={eid}
+                          className="text-[10px] font-mono text-slate-400 bg-slate-900/60 px-1.5 py-0.5 rounded border border-slate-700/40"
+                        >
+                          {eid}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-800/80">
           <div className="flex items-center gap-2 text-xs text-slate-300">
             <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
             <span>
               {aqData.aqi
                 ? `Outdoor cardiovascular exercise restricted under current AQI (${aqData.aqi}).`
-                : 'Elevated fine particulates detected. Limit heavy cardiovascular exercise.'}
+                : 'Elevated fine particulates detected. Shift high-intensity cardio indoors.'}
             </span>
           </div>
 

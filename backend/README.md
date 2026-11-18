@@ -19,7 +19,8 @@ The BreatheWise AI backend bridges real-world atmospheric chemistry models, phys
    - `forecast_validity`: `CURRENT_PERIOD` (±60m), `FUTURE_PERIOD`, or `HISTORICAL_PERIOD`.
    - `model_run_timestamp` / `model_data_available_at`: Strictly `null` when unexposed by provider (no invented metadata).
 5. **Dominant Pollutant Scientific Integrity**: Raw concentrations across differing units ($\text{mg/m}^3$ vs $\mu\text{g/m}^3$) or toxicological potencies are **never compared directly**. For modelled data, dominant pollutant is derived from dimensionless exceedance ratios against official Indian National Ambient Air Quality Standards (NAAQS) benchmarks and explicitly labeled as a screening heuristic.
-6. **No Scraping & Graceful Degradation**: Adheres strictly to the National Data Sharing and Accessibility Policy (NDSAP). Unconfigured or rate-limited third-party providers gracefully degrade without crashing or breaking dependent frontend workflows.
+6. **Google Gemini & Deterministic Safety Supremacy (Phase 5)**: Generative synthesis transforms validated telemetry into plain-language actionable advice via Google Gemini Flash models using the official `google-genai` SDK and Pydantic structured output. Generative AI **never acts as the source of measurements or authoritative safety decisions**. Pre-generation deterministic safety rules strictly enforce action allowlists, ban uncertified air cleaners (e.g. ozone generators), balance indoor air ventilation, and prevent clinical medical diagnosis. If Gemini is unconfigured, times out, or fails post-generation semantic validation, the system automatically falls back to safe deterministic recommendations.
+7. **No Scraping & Graceful Degradation**: Adheres strictly to the National Data Sharing and Accessibility Policy (NDSAP). Unconfigured or rate-limited third-party providers gracefully degrade without crashing or breaking dependent frontend workflows.
 
 ---
 
@@ -54,12 +55,23 @@ The BreatheWise AI backend bridges real-world atmospheric chemistry models, phys
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────┐
+│        Phase 5: Evidence & Deterministic Safety Engine          │
+│                  (app/services/ & app/ai/)                      │
+│ - evidence_builder.py: constructs structured evidence context   │
+│ - deterministic_safety.py: authoritative allowlist & constraints│
+│ - gemini_service.py: google-genai SDK structured synthesis      │
+│ - Post-generation semantic validator & automatic fallback       │
+└───────────────────────────────────┬─────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────┐
 │              FastAPI API Layer (app/api/routes/)                │
 │ - GET /health & /api/v1/health                                  │
 │ - GET /api/v1/providers/status                                  │
 │ - GET /api/v1/air-quality/current                               │
 │ - GET /api/v1/air-quality/forecast                              │
 │ - GET /api/v1/weather/current                                   │
+│ - POST /api/v1/ai/insights                                      │
 └───────────────────────────────────┬─────────────────────────────┘
                                     │
                                     ▼
@@ -73,9 +85,13 @@ The BreatheWise AI backend bridges real-world atmospheric chemistry models, phys
 ```text
 backend/
 ├── app/
+│   ├── ai/
+│   │   ├── gemini_service.py       # Google GenAI SDK client lifecycle & async generation
+│   │   └── prompt_manager.py       # Versioned prompts & structured output instructions
 │   ├── api/
 │   │   └── routes/
 │   │       ├── air_quality.py      # Air quality current & forecast endpoints
+│   │       ├── ai.py               # Evidence-grounded AI insights endpoint
 │   │       ├── health.py           # Health check endpoints
 │   │       ├── providers.py        # Environmental provider telemetry status
 │   │       └── weather.py          # Weather & dispersion conditions endpoints
@@ -89,16 +105,22 @@ backend/
 │   │   ├── open_meteo.py           # Open-Meteo CAMS & NWP implementation
 │   │   └── openaq.py               # OpenAQ v3 physical monitor implementation
 │   ├── schemas/
+│   │   ├── ai.py                   # Structured synthesis, evidence & action schemas
 │   │   ├── air_quality.py          # Air quality request/response Pydantic schemas
 │   │   ├── common.py               # Enums, coordinates, and error schemas
 │   │   ├── providers.py            # Provider status Pydantic schemas
 │   │   └── weather.py              # Weather & dispersion Pydantic schemas
 │   ├── services/
+│   │   ├── ai_service.py           # AI insight pipeline orchestrator
 │   │   ├── air_quality_service.py  # Air quality aggregation & fallback orchestrator
 │   │   ├── data_validation.py      # Physical bounds, units & dispersion heuristics
+│   │   ├── deterministic_safety.py # Authoritative safety allowlists & semantic validators
+│   │   ├── evidence_builder.py     # Verifiable evidence context builder
 │   │   └── weather_service.py      # Weather & boundary layer orchestrator
 │   └── main.py                     # FastAPI application factory & middleware
 ├── tests/
+│   ├── test_ai_endpoints.py        # AI insights API endpoint tests
+│   ├── test_ai_service.py          # Gemini integration & deterministic safety tests
 │   ├── test_air_quality_service.py # Orchestrator unit tests
 │   ├── test_api_endpoints.py       # FastAPI HTTP endpoint tests
 │   ├── test_health.py              # Health check tests
@@ -178,6 +200,14 @@ backend/
   - Returns documented dispersion conditions (`Potentially Unfavorable`, `Moderate`, `Favorable`) and stagnation risk (`Elevated`, `Moderate`, `Low`).
   - Never claims a confirmed thermal inversion without atmospheric sounding profiles.
 
+### 6. AI Insights & Evidence-Grounded Recommendations (Phase 5)
+- `POST /api/v1/ai/insights`
+  - Accepts JSON request body: `{"latitude": float, "longitude": float, "activity_context": "GENERAL" | "OUTDOOR_EXERCISE" | "COMMUTE" | "VENTILATION" | "SENSITIVE_POPULATION"}`.
+  - Retrieves environmental telemetry, constructs minimal structured evidence context, and evaluates authoritative deterministic safety constraints.
+  - Synthesizes structured plain-language explanations and permissible recommendations using Google Gemini (`gemini-2.5-flash`).
+  - Strict allowlist enforcement: every recommendation must match a pre-authorized canonical action ID and cite verified evidence IDs.
+  - Automatic fallback: gracefully degrades to deterministic protective recommendations if Gemini is unconfigured, times out, throws errors, or produces invalid output.
+
 ---
 
 ## 6. Testing & Verification
@@ -186,7 +216,7 @@ backend/
 ```bash
 PYTHONPATH=. pytest
 ```
-*Current test suite: 30 automated tests across 6 test modules.*
+*Current test suite: 63 automated tests across 8 test modules (100% offline; all Gemini and external APIs mocked).*
 
 ### Run Live Network Verification
 ```bash

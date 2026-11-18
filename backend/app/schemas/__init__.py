@@ -15,6 +15,18 @@ from .air_quality import (
 )
 from .weather import NormalizedWeatherResponse
 from .providers import ProviderStatusItem, ProvidersStatusResponse
+from .ai import (
+    ActivityContext,
+    AIGenerationStatus,
+    ActionCategory,
+    ActionPriority,
+    EnvironmentalEvidenceItem,
+    EnvironmentalEvidenceContext,
+    AIInsightAction,
+    AIStructuredSynthesis,
+    AIInsightRequest,
+    AIInsightResponse
+)
 
 __all__ = [
     "DataClassification",
@@ -29,5 +41,15 @@ __all__ = [
     "AirQualityForecastResponse",
     "NormalizedWeatherResponse",
     "ProviderStatusItem",
-    "ProvidersStatusResponse"
+    "ProvidersStatusResponse",
+    "ActivityContext",
+    "AIGenerationStatus",
+    "ActionCategory",
+    "ActionPriority",
+    "EnvironmentalEvidenceItem",
+    "EnvironmentalEvidenceContext",
+    "AIInsightAction",
+    "AIStructuredSynthesis",
+    "AIInsightRequest",
+    "AIInsightResponse"
 ]

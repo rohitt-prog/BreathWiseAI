@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     OPEN_METEO_FRESHNESS_MINUTES: int = 180  # Modelled data updates every 1-3 hours
     OBSERVATION_FRESHNESS_MINUTES: int = 120  # Ground sensors update hourly
 
+    # Google Gemini AI Configuration (Phase 5)
+    GEMINI_API_KEY: Optional[str] = Field(default=None, description="Google Gemini API Key (optional)")
+    GEMINI_MODEL: str = Field(default="gemini-2.5-flash", description="Supported Gemini Flash model identifier")
+    GEMINI_TIMEOUT_SECONDS: float = Field(default=12.0, description="Gemini API timeout in seconds")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
