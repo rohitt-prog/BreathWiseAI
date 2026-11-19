@@ -28,8 +28,9 @@ export function useAirQualityQuery(
   customCoords?: { lat: number; lon: number },
   forceDemoMode?: boolean
 ): UseQueryResult<TelemetryQueryResult, Error> {
-  const { currentLocationId, userPreferences } = useAppStore();
+  const { currentLocationId, selectedLocation, userPreferences, telemetryMode } = useAppStore();
   const locationId = customLocationId || currentLocationId;
+  const effectiveForceDemo = forceDemoMode !== undefined ? forceDemoMode : (telemetryMode === 'demo' ? true : undefined);
 
   // Resolve location coordinates without silently substituting MOCK_LOCATIONS[0]
   const resolvedCoords = useMemo(() => {
@@ -38,6 +39,14 @@ export function useAirQualityQuery(
         lat: customCoords.lat,
         lon: customCoords.lon,
         isValid: isValidCoordinate(customCoords.lat, customCoords.lon),
+      };
+    }
+
+    if (selectedLocation && selectedLocation.id === locationId) {
+      return {
+        lat: selectedLocation.lat,
+        lon: selectedLocation.lon,
+        isValid: isValidCoordinate(selectedLocation.lat, selectedLocation.lon),
       };
     }
 
@@ -67,7 +76,7 @@ export function useAirQualityQuery(
       lon: null,
       isValid: false,
     };
-  }, [customCoords, locationId, userPreferences]);
+  }, [customCoords, locationId, selectedLocation, userPreferences]);
 
   const { lat, lon, isValid } = resolvedCoords;
 
@@ -91,7 +100,7 @@ export function useAirQualityQuery(
 
   return useQuery(
     {
-      queryKey: getAirQualityQueryKey(locationId, lat, lon, forceDemoMode),
+      queryKey: getAirQualityQueryKey(locationId, lat, lon, effectiveForceDemo),
       queryFn: async () => {
         if (!isValid || lat === null || lon === null) {
           if (customCoords && !isValidCoordinate(customCoords.lat, customCoords.lon)) {
@@ -103,8 +112,8 @@ export function useAirQualityQuery(
             `Requested location '${locationId}' cannot be resolved to valid geographic coordinates. Please select a valid location or provide valid coordinates.`
           );
         }
-        return forceDemoMode !== undefined
-          ? apiClient.resolveAirQualityData(locationId, { lat, lon }, forceDemoMode)
+        return effectiveForceDemo !== undefined
+          ? apiClient.resolveAirQualityData(locationId, { lat, lon }, effectiveForceDemo)
           : apiClient.resolveAirQualityData(locationId, { lat, lon });
       },
       staleTime: 5 * 60 * 1000,

@@ -32,8 +32,9 @@ export function useAirQualityForecastQuery(
   customCoords?: { lat: number; lon: number },
   forceDemoMode?: boolean
 ): UseQueryResult<ForecastQueryResult, Error> {
-  const { currentLocationId, userPreferences } = useAppStore();
+  const { currentLocationId, selectedLocation, userPreferences, telemetryMode } = useAppStore();
   const locationId = customLocationId || currentLocationId;
+  const effectiveForceDemo = forceDemoMode !== undefined ? forceDemoMode : (telemetryMode === 'demo' ? true : undefined);
 
   // Resolve location coordinates without silently substituting MOCK_LOCATIONS[0]
   const resolvedCoords = useMemo(() => {
@@ -42,6 +43,14 @@ export function useAirQualityForecastQuery(
         lat: customCoords.lat,
         lon: customCoords.lon,
         isValid: isValidCoordinate(customCoords.lat, customCoords.lon),
+      };
+    }
+
+    if (selectedLocation && selectedLocation.id === locationId) {
+      return {
+        lat: selectedLocation.lat,
+        lon: selectedLocation.lon,
+        isValid: isValidCoordinate(selectedLocation.lat, selectedLocation.lon),
       };
     }
 
@@ -76,12 +85,12 @@ export function useAirQualityForecastQuery(
       lon: null,
       isValid: false,
     };
-  }, [customCoords, locationId, userPreferences]);
+  }, [customCoords, locationId, selectedLocation, userPreferences]);
 
   const { lat, lon, isValid } = resolvedCoords;
 
   return useQuery({
-    queryKey: getForecastQueryKey(locationId, lat, lon, forceDemoMode),
+    queryKey: getForecastQueryKey(locationId, lat, lon, effectiveForceDemo),
     queryFn: async () => {
       if (!isValid || lat === null || lon === null) {
         if (customCoords && !isValidCoordinate(customCoords.lat, customCoords.lon)) {
@@ -93,7 +102,7 @@ export function useAirQualityForecastQuery(
           `Requested location '${locationId}' cannot be resolved to valid geographic coordinates. Please select a valid location or provide valid coordinates.`
         );
       }
-      return apiClient.resolveForecastData(locationId, { lat, lon }, { forceDemoMode });
+      return apiClient.resolveForecastData(locationId, { lat, lon }, { forceDemoMode: effectiveForceDemo });
     },
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,

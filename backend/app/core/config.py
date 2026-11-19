@@ -1,7 +1,11 @@
 """Application Configuration using Pydantic Settings."""
+from pathlib import Path
 from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
+
+# Monorepo root .env file path (BreathwiseAI/.env)
+ROOT_ENV_PATH = Path(__file__).resolve().parents[3] / ".env"
 
 
 class Settings(BaseSettings):
@@ -38,7 +42,7 @@ class Settings(BaseSettings):
     GEMINI_TIMEOUT_SECONDS: float = Field(default=12.0, description="Gemini API timeout in seconds")
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=ROOT_ENV_PATH,
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore"

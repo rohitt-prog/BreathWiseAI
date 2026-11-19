@@ -21,3 +21,25 @@ export interface UserPreferences {
   };
   notificationsEnabled: boolean;
 }
+
+export const DEFAULT_USER_PREFERENCES: UserPreferences = {
+  personaType: 'student',
+  defaultLocation: {
+    name: 'Anand Vihar, Delhi',
+    city: 'Delhi',
+    lat: 28.6508,
+    lon: 77.3152,
+  },
+  commuteMode: 'metro',
+  commuteTimes: {
+    morningDeparture: '08:30',
+    eveningReturn: '18:00',
+  },
+  hasSensitiveMembers: true,
+  indoorFacilities: {
+    hasAirPurifier: true,
+    purifierFilterType: 'HEPA',
+    homeVentilationType: 'sealed_ac',
+  },
+  notificationsEnabled: true,
+};

@@ -216,10 +216,33 @@ backend/
 ```bash
 PYTHONPATH=. pytest
 ```
-*Current test suite: 63 automated tests across 8 test modules (100% offline; all Gemini and external APIs mocked).*
+*Current test suite: 492 automated tests across 9 test modules (100% offline; all Gemini and external APIs mocked).*
 
 ### Run Live Network Verification
 ```bash
 PYTHONPATH=. python verify_live.py
 ```
-*Performs live queries against real Open-Meteo atmospheric chemistry and numerical weather endpoints.*
+*Performs live queries against real Open-Meteo atmospheric chemistry (CAMS) and numerical weather prediction endpoints, validating coordinate normalization, pollutant extraction, boundary layer meteorology, and stagnation heuristics.*
+
+---
+
+## 7. Project Phases & Integration Roadmap
+
+- **Phase 1–4**: Domain research, UX specifications, frontend foundation, and backend provider architecture (Completed)
+- **Phase 5**: Google Gemini AI Intelligence & Deterministic Safety Engine (Completed & Verified)
+  - Pydantic structured output, canonical action allowlists, and fail-closed automatic fallbacks.
+- **Phase 6**: Feature Integration & Shared Telemetry Architecture (Completed & Verified)
+  - TanStack React Query shared telemetry caching and provenance/freshness gating.
+- **Phase 7**: Live Data Activation & Firebase Integration (In Progress)
+  - **Phase 7.1 — Live Location System** (Completed & Approved): Global geocoding search (Open-Meteo) and explicit browser GPS ("Use my current location") propagating into shared telemetry.
+  - **Phase 7.2 — Live Telemetry Activation & Verification** (Completed & Approved): Verification of genuine live environmental data pipelines across arbitrary global coordinates without provider rebuild.
+  - **Phase 7.3 — Backend Resilience & Caching** (Current): In-memory LRU caching with single-flight request coalescing, 4-decimal coordinate keys, and strict provenance preservation.
+  - **Phase 7.4 — Firebase Setup & Authentication** (Upcoming)
+  - **Phase 7.5 — Firestore User Persistence** (Upcoming)
+  - **Phase 7.6 — Mode Controls & Final Integration** (Upcoming)
+
+### Provider Status & Operational Boundaries
+- **Open-Meteo CAMS**: Active default provider. Global model output (~40 km grid). Hourly pollutant concentrations normalized. Does not produce statutory Indian NAQI.
+- **Open-Meteo Weather**: Active default provider. Global surface meteorology and boundary layer height ($h_{\text{PBL}}$) for dispersion/stagnation risk assessment.
+- **OpenAQ v3**: Supplementary physical sensor provider. Inactive gracefully (`NOT_CONFIGURED`) when `OPENAQ_API_KEY` is omitted in `.env`; backend falls back to Open-Meteo without error.
+- **CPCB / data.gov.in**: Statutory Indian National AQI computation engine. Direct automated scraping is prohibited under NDSAP; returns `indian_naqi = null` with explicit reason when official ground sensor data is unavailable.

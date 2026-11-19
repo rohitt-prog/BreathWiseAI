@@ -30,8 +30,11 @@ import { Badge } from '../../components/common/Badge';
 import clsx from 'clsx';
 
 export const PlannerPage: React.FC = () => {
-  const { currentLocationId, openExplanationModal, userPreferences } = useAppStore();
-  const currentLocObj = MOCK_LOCATIONS.find((l) => l.id === currentLocationId) || MOCK_LOCATIONS[0];
+  const { currentLocationId, selectedLocation, openExplanationModal, userPreferences } = useAppStore();
+  const currentLocObj =
+    (selectedLocation && selectedLocation.id === currentLocationId ? selectedLocation : null) ||
+    MOCK_LOCATIONS.find((l) => l.id === currentLocationId) ||
+    MOCK_LOCATIONS[0];
 
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, 'helpful' | 'unfeasible'>>({});
   const [policyMode, setPolicyMode] = useState<'balanced' | 'max_exposure'>('balanced');

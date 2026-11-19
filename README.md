@@ -37,7 +37,7 @@ BreathwiseAI/
 │   │   ├── features/       # Feature pages (Dashboard, IndoorAir, Planner, ActionTracker)
 │   │   ├── services/       # API client & mock scenario data
 │   │   └── types/          # Strict TypeScript interfaces & NAQI contracts
-│   └── test/               # Vitest + React Testing Library suites (28 tests)
+│   └── test/               # Vitest + React Testing Library suites (240 tests)
 ├── backend/                # Python FastAPI REST API
 │   ├── app/
 │   │   ├── api/routes/     # Clean endpoints (air-quality, weather, providers, health)
@@ -45,7 +45,7 @@ BreathwiseAI/
 │   │   ├── providers/      # Open-Meteo, OpenAQ, and CPCB provider adapters
 │   │   ├── schemas/        # Strict Pydantic v2 validation models
 │   │   └── services/       # Data validation, inversion physics, and provider orchestration
-│   ├── tests/              # Pytest test suite (25 tests)
+│   ├── tests/              # Pytest test suite (492 tests)
 │   ├── verify_live.py      # Live external API verification script
 │   └── requirements.txt    # Python dependencies
 ├── .gitignore              # Enforces lean repository budget (< 10 MB limit)
@@ -54,19 +54,37 @@ BreathwiseAI/
 
 ---
 
-## 4. Current Phase: Phase 4 Completed (Backend & Live Environmental Data Integration)
+## 4. Current Phase: Phase 7.3 (Backend Resilience & Caching)
 
 - **Phase 1**: Domain Research & Strategic Architecture (Completed)
 - **Phase 2**: Product Architecture & UX Specification (Approved)
 - **Phase 3**: Frontend Foundation & Scientific Presentation (Completed & Verified)
 - **Phase 4**: Backend & Live Environmental Data Integration (Completed & Verified)
-  - Python 3.11+ FastAPI service with Pydantic v2 normalization.
-  - Multi-provider adapter layer (Open-Meteo CAMS, OpenAQ v3, CPCB integration).
-  - Transparent data provenance (`OBSERVATION` vs `MODELLED_FORECAST`).
-  - Strict Indian NAQI integrity: returns `null` with explanation if certified CPCB data is unavailable (zero fabrication of international indices).
-  - Atmospheric boundary layer stagnation and nocturnal thermal inversion risk physics.
-  - React frontend integrated with live backend endpoints and graceful offline fallback.
-  - 53 total automated tests (25 backend pytest, 28 frontend vitest) all passing with zero errors.
+- **Phase 5**: Google Gemini AI Intelligence & Deterministic Safety Engine (Completed & Verified)
+  - Official `google-genai` SDK structured JSON outputs with Pydantic validation.
+  - Deterministic pre- and post-generation safety rules, action allowlists, and fail-closed automatic fallbacks.
+- **Phase 6**: Full Feature Module & Shared Telemetry Integration (Completed & Verified)
+  - Unified TanStack React Query telemetry caching across Dashboard, Planner, Indoor Air, and Alternatives.
+  - Strict provenance, freshness, and safety gating across all four core modules.
+- **Phase 7**: Live Data Activation & Firebase Integration (In Progress)
+  - **Phase 7.1 — Live Location System** (Completed & Approved): Global geocoding search (Open-Meteo) and explicit browser GPS ("Use my current location") propagating directly into shared telemetry.
+  - **Phase 7.2 — Live Telemetry Activation & Verification** (Completed & Approved): Verification of genuine live environmental data pipelines across arbitrary global coordinates.
+  - **Phase 7.3 — Backend Resilience & Caching** (Current): In-memory LRU caching with single-flight request coalescing, 4-decimal coordinate normalization, and strict timestamp/provenance preservation.
+  - **Phase 7.4 — Firebase Setup & Authentication** (Upcoming)
+  - **Phase 7.5 — Firestore User Persistence** (Upcoming)
+  - **Phase 7.6 — Mode Controls & Final Integration** (Upcoming)
+
+### Automated Test Suite Baseline
+- **Total Tests**: 732+ automated tests passing with zero errors
+  - **Backend (Pytest)**: 492 automated tests across 9 test suites
+  - **Frontend (Vitest)**: 240 automated unit and integration tests across 15 test suites
+  - **TypeScript & Vite**: Production compilation verified with 0 errors
+
+### Data Provider Capabilities & Real Limitations
+- **Open-Meteo CAMS**: Operational hourly global atmospheric chemistry forecasts (~40 km grid). Normalizes PM2.5, PM10, NO2, SO2, CO, and O3. Does not generate statutory Indian NAQI.
+- **Open-Meteo Weather**: Operational numerical weather predictions providing temperature, humidity, wind velocity, and planetary boundary layer height ($h_{\text{PBL}}$) for dispersion/stagnation heuristics.
+- **OpenAQ v3**: Physical ground sensor station discovery within 25 km radius. Requires `OPENAQ_API_KEY`; runs in graceful unconfigured fallback when key is absent.
+- **CPCB / data.gov.in**: Statutory Indian National AQI formulas implemented in pure Python. Official live CAAQMS automated ingestion requires registered credentials; returns explicit unavailable reason if unverified. No unauthorized scraping is performed.
 
 ---
 

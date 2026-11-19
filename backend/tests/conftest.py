@@ -3,6 +3,15 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from app.main import app
+from app.core.cache import telemetry_cache
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def clear_backend_cache():
+    """Autouse fixture ensuring clean cache state for each test case."""
+    await telemetry_cache.clear()
+    yield
+    await telemetry_cache.clear()
 
 
 @pytest_asyncio.fixture

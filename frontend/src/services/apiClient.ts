@@ -8,8 +8,10 @@ import {
   PollutantDetail,
   AirQualityForecastResponse,
   HourlyForecastPoint,
-  ForecastQueryResult
+  ForecastQueryResult,
+  GeocodingResult
 } from '../types/airQuality';
+import { isValidCoordinate } from '../hooks/useAirQualityForecastQuery';
 import { AIInsightResponse, ActivityContext } from '../types/ai';
 import { MOCK_AIR_QUALITY_DATA } from './mockData';
 
@@ -207,6 +209,100 @@ export class ApiClient {
       throw new Error(`Forecast request failed with HTTP ${res.status}`);
     }
     return res.json();
+  }
+
+  /**
+   * Searches global locations using Open-Meteo Geocoding API.
+   * Enforces input trimming, minimum length (>= 2 chars), 8s timeout,
+   * coordinate validation, and duplicate filtering.
+   */
+  async searchLocations(
+    query: string,
+    signal?: AbortSignal
+  ): Promise<GeocodingResult[]> {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      return [];
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    const onCallerAbort = () => controller.abort();
+    if (signal) {
+      signal.addEventListener('abort', onCallerAbort);
+    }
+
+    try {
+      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
+        trimmed
+      )}&count=10&language=en&format=json`;
+
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) {
+        throw new Error(`Location search request failed with HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      const rawResults = Array.isArray(data?.results) ? data.results : [];
+
+      const validResults: GeocodingResult[] = [];
+      const seen = new Set<string>();
+
+      for (const item of rawResults) {
+        if (!item || typeof item !== 'object') continue;
+        const lat = typeof item.latitude === 'number' ? item.latitude : parseFloat(item.latitude);
+        const lon = typeof item.longitude === 'number' ? item.longitude : parseFloat(item.longitude);
+
+        if (!isValidCoordinate(lat, lon)) {
+          continue;
+        }
+
+        const name = String(item.name || '').trim();
+        const country = item.country ? String(item.country).trim() : undefined;
+        const admin1 = item.admin1 ? String(item.admin1).trim() : undefined;
+        const admin2 = item.admin2 ? String(item.admin2).trim() : undefined;
+
+        // Deduplication key by rounded coordinate and name
+        const dedupKey = `${name.toLowerCase()}_${country?.toLowerCase() || ''}_${admin1?.toLowerCase() || ''}_${lat.toFixed(2)}_${lon.toFixed(2)}`;
+        if (seen.has(dedupKey)) {
+          continue;
+        }
+        seen.add(dedupKey);
+
+        const displayParts = [name, admin1, country].filter(Boolean);
+
+        validResults.push({
+          id: item.id ?? `${lat}_${lon}`,
+          name,
+          latitude: lat,
+          longitude: lon,
+          country,
+          countryCode: item.country_code,
+          admin1,
+          admin2,
+          postcodes: Array.isArray(item.postcodes) ? item.postcodes : undefined,
+          displayName: displayParts.join(', '),
+        });
+      }
+
+      return validResults;
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        if (signal?.aborted) {
+          // Re-throw raw AbortError when cancellation originates from caller's AbortSignal
+          throw err;
+        }
+        // Distinguish internal 8-second timeout from caller cancellation
+        throw new Error('Location search request timed out after 8 seconds. Please try again.');
+      }
+      throw new Error(err.message || 'Failed to search locations.');
+    } finally {
+      clearTimeout(timeoutId);
+      if (signal) {
+        signal.removeEventListener('abort', onCallerAbort);
+      }
+    }
   }
 
   /**

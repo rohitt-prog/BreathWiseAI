@@ -12,6 +12,31 @@ export type DataSourceProvenance =
   | 'OPEN_METEO_MODELLED'
   | 'SIMULATED_DEMO';
 
+export interface SelectedLocation {
+  id: string;
+  name: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  lat: number;
+  lon: number;
+  isCustom?: boolean;
+  isGps?: boolean;
+}
+
+export interface GeocodingResult {
+  id: number | string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  country?: string;
+  countryCode?: string;
+  admin1?: string;
+  admin2?: string;
+  postcodes?: string[];
+  displayName: string;
+}
+
 export interface StationMetadata {
   id: string;
   name: string;

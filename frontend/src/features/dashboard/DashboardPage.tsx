@@ -23,8 +23,9 @@ import {
 import { Button } from '../../components/common/Button';
 
 export const DashboardPage: React.FC = () => {
-  const { currentLocationId, openExplanationModal, userPreferences } = useAppStore();
+  const { currentLocationId, selectedLocation, openExplanationModal, userPreferences } = useAppStore();
   const currentLocObj =
+    (selectedLocation && selectedLocation.id === currentLocationId ? selectedLocation : null) ||
     MOCK_LOCATIONS.find((l) => l.id === currentLocationId) ||
     (userPreferences?.defaultLocation
       ? {

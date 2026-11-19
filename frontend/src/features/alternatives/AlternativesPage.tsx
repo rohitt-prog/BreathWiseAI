@@ -29,7 +29,7 @@ import { Badge } from '../../components/common/Badge';
 import clsx from 'clsx';
 
 export const AlternativesPage: React.FC = () => {
-  const { currentLocationId, userPreferences } = useAppStore();
+  const { currentLocationId, selectedLocation, userPreferences } = useAppStore();
 
   const {
     data: queryResult,
@@ -43,6 +43,7 @@ export const AlternativesPage: React.FC = () => {
   const isLive = queryResult?.isLive ?? false;
 
   const currentLocObj =
+    (selectedLocation && selectedLocation.id === currentLocationId ? selectedLocation : null) ||
     MOCK_LOCATIONS.find((loc) => loc.id === currentLocationId) ||
     (userPreferences?.defaultLocation
       ? {

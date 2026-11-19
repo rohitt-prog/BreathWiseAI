@@ -77,8 +77,11 @@ const NAQI_VENTILATION_DECISION_TABLE: VentilationDecisionTier[] = [
 ];
 
 export const IndoorAirPage: React.FC = () => {
-  const { currentLocationId } = useAppStore();
-  const currentLocObj = MOCK_LOCATIONS.find((l) => l.id === currentLocationId) || MOCK_LOCATIONS[0];
+  const { currentLocationId, selectedLocation } = useAppStore();
+  const currentLocObj =
+    (selectedLocation && selectedLocation.id === currentLocationId ? selectedLocation : null) ||
+    MOCK_LOCATIONS.find((l) => l.id === currentLocationId) ||
+    MOCK_LOCATIONS[0];
 
   const { data: telemetry, isLoading, isError, error, refetch } = useAirQualityQuery();
 

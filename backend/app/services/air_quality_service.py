@@ -11,6 +11,14 @@ from ..providers.open_meteo import OpenMeteoAirQualityProvider, OpenMeteoWeather
 from ..providers.openaq import OpenAQProvider
 from ..providers.cpcb import CPCBProvider
 from .data_validation import validate_coordinates
+from ..core.cache import (
+    InMemoryCache,
+    telemetry_cache,
+    make_cache_key,
+    TTL_CAMS_AIR_QUALITY,
+    TTL_OPENAQ_LATEST,
+    TTL_FORECAST,
+)
 
 
 class AirQualityService:
@@ -20,11 +28,13 @@ class AirQualityService:
         self,
         open_meteo_provider: Optional[OpenMeteoAirQualityProvider] = None,
         openaq_provider: Optional[OpenAQProvider] = None,
-        cpcb_provider: Optional[CPCBProvider] = None
+        cpcb_provider: Optional[CPCBProvider] = None,
+        cache: Optional[InMemoryCache] = None,
     ):
         self.open_meteo = open_meteo_provider or OpenMeteoAirQualityProvider()
         self.openaq = openaq_provider or OpenAQProvider()
         self.cpcb = cpcb_provider or CPCBProvider()
+        self.cache = cache or telemetry_cache
 
     async def get_current_air_quality(
         self,
@@ -40,21 +50,35 @@ class AirQualityService:
         """
         # Validate coordinates first
         coords = validate_coordinates(latitude, longitude)
+        cache_key = make_cache_key("air_quality", "current", coords.latitude, coords.longitude)
 
-        # 1. Check if OpenAQ physical station is configured
-        if self.openaq.is_configured():
-            try:
-                logger.info("OpenAQ API key detected; querying physical ground stations for (%s, %s)", coords.latitude, coords.longitude)
-                openaq_res = await self.openaq.get_current_air_quality(coords.latitude, coords.longitude, client=client)
-                # If ground sensors returned valid pollutants, return observation
-                if openaq_res.available_pollutants:
-                    return openaq_res
-            except Exception as exc:
-                logger.warning("OpenAQ query failed; gracefully falling back to Open-Meteo: %s", str(exc))
+        def _resolve_ttl(res: NormalizedAirQualityResponse) -> float:
+            if res.source_type == DataClassification.OBSERVATION:
+                return TTL_OPENAQ_LATEST
+            return TTL_CAMS_AIR_QUALITY
 
-        # 2. Query Open-Meteo CAMS Modelled Forecast
-        logger.info("Querying Open-Meteo modelled air quality for (%s, %s)", coords.latitude, coords.longitude)
-        return await self.open_meteo.get_current_air_quality(coords.latitude, coords.longitude, client=client)
+        async def _fetch() -> NormalizedAirQualityResponse:
+            # 1. Check if OpenAQ physical station is configured
+            if self.openaq.is_configured():
+                try:
+                    logger.info("OpenAQ API key detected; querying physical ground stations for (%s, %s)", coords.latitude, coords.longitude)
+                    openaq_res = await self.openaq.get_current_air_quality(coords.latitude, coords.longitude, client=client)
+                    # If ground sensors returned valid pollutants, return observation
+                    if openaq_res.available_pollutants:
+                        return openaq_res
+                except Exception as exc:
+                    logger.warning("OpenAQ query failed; gracefully falling back to Open-Meteo: %s", str(exc))
+
+            # 2. Query Open-Meteo CAMS Modelled Forecast
+            logger.info("Querying Open-Meteo modelled air quality for (%s, %s)", coords.latitude, coords.longitude)
+            return await self.open_meteo.get_current_air_quality(coords.latitude, coords.longitude, client=client)
+
+        return await self.cache.get_or_set(
+            key=cache_key,
+            ttl_seconds=_resolve_ttl,
+            fetcher=_fetch,
+            clone_fn=lambda r: r.model_copy(deep=True)
+        )
 
     async def get_air_quality_forecast(
         self,
@@ -65,10 +89,22 @@ class AirQualityService:
     ) -> AirQualityForecastResponse:
         """Fetch hourly air quality forecast from Open-Meteo CAMS."""
         coords = validate_coordinates(latitude, longitude)
-        result = await self.open_meteo.get_forecast(coords.latitude, coords.longitude, client=client)
+        cache_key = make_cache_key("air_quality", "forecast_full", coords.latitude, coords.longitude)
+
+        async def _fetch() -> AirQualityForecastResponse:
+            logger.info("Fetching Open-Meteo air quality forecast for (%s, %s)", coords.latitude, coords.longitude)
+            return await self.open_meteo.get_forecast(coords.latitude, coords.longitude, client=client)
+
+        full_forecast = await self.cache.get_or_set(
+            key=cache_key,
+            ttl_seconds=TTL_FORECAST,
+            fetcher=_fetch,
+            clone_fn=lambda r: r.model_copy(deep=True)
+        )
+
         if hours is not None and hours > 0:
-            result.hourly_forecast = result.hourly_forecast[:hours]
-        return result
+            full_forecast.hourly_forecast = full_forecast.hourly_forecast[:hours]
+        return full_forecast
 
     def get_providers_status(self) -> ProvidersStatusResponse:
         """List operational and configuration status across all environmental data providers."""

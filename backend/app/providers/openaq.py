@@ -26,11 +26,20 @@ from ..services.data_validation import (
     validate_pollutant_concentration,
     determine_dominant_pollutant
 )
+from ..core.cache import (
+    InMemoryCache,
+    telemetry_cache,
+    make_cache_key,
+    TTL_OPENAQ_LOCATIONS,
+)
 from .base import BaseAirQualityProvider
 
 
 class OpenAQProvider(BaseAirQualityProvider):
     """Integrates OpenAQ v3 Physical Ground Sensors and Monitors."""
+
+    def __init__(self, cache: Optional[InMemoryCache] = None):
+        self.cache = cache or telemetry_cache
 
     @property
     def provider_id(self) -> str:
@@ -91,14 +100,23 @@ class OpenAQProvider(BaseAirQualityProvider):
             should_close = True
 
         try:
-            logger.info("Querying OpenAQ v3 locations near lat=%s, lon=%s", latitude, longitude)
-            loc_resp = await client.get(
-                f"{settings.OPENAQ_BASE_URL}/locations",
-                params=params,
-                headers=headers
+            loc_cache_key = make_cache_key("openaq", "locations", latitude, longitude, radius=25000)
+
+            async def _fetch_locations() -> dict:
+                logger.info("Querying OpenAQ v3 locations near lat=%s, lon=%s", latitude, longitude)
+                loc_resp = await client.get(
+                    f"{settings.OPENAQ_BASE_URL}/locations",
+                    params=params,
+                    headers=headers
+                )
+                loc_resp.raise_for_status()
+                return loc_resp.json()
+
+            loc_data = await self.cache.get_or_set(
+                key=loc_cache_key,
+                ttl_seconds=TTL_OPENAQ_LOCATIONS,
+                fetcher=_fetch_locations
             )
-            loc_resp.raise_for_status()
-            loc_data = loc_resp.json()
 
             results = loc_data.get("results", [])
             if not results:
