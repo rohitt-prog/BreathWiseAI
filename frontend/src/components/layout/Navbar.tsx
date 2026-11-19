@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Wind, MapPin, Sun, Moon, Menu, X, ShieldAlert } from 'lucide-react';
+import { Wind, MapPin, Sun, Moon, Menu, X, ShieldAlert, Radio, HelpCircle, Clock } from 'lucide-react';
 import { useAppStore } from '../../stores/useAppStore';
-import { MOCK_AIR_QUALITY_DATA, MOCK_LOCATIONS } from '../../services/mockData';
-import { getAQIMetadata } from '../../utils/aqiUtils';
+import { MOCK_LOCATIONS } from '../../services/mockData';
+import { useAirQualityQuery } from '../../hooks/useAirQualityQuery';
+import { getAQIMetadata, determineTelemetryProvenance } from '../../utils/aqiUtils';
 import clsx from 'clsx';
 
 export const Navbar: React.FC = () => {
@@ -17,8 +18,10 @@ export const Navbar: React.FC = () => {
   } = useAppStore();
 
   const currentLocObj = MOCK_LOCATIONS.find(l => l.id === currentLocationId) || MOCK_LOCATIONS[0];
-  const aqData = MOCK_AIR_QUALITY_DATA[currentLocationId] || MOCK_AIR_QUALITY_DATA['del_anand_vihar'];
-  const aqiMeta = getAQIMetadata(aqData.aqi);
+  const { data: telemetry, isLoading, isError } = useAirQualityQuery();
+
+  const isLive = !isError && Boolean(telemetry?.isLive);
+  const aqData = telemetry?.data ?? null;
 
   const navLinks = [
     { to: '/dashboard', label: 'Live Dashboard' },
@@ -81,20 +84,81 @@ export const Navbar: React.FC = () => {
           })}
         </nav>
 
-        {/* Demo AQI Indicator & Utilities */}
+        {/* Telemetry AQI Indicator & Utilities */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Demo AQI Indicator */}
-          <div 
-            className={clsx(
-              'hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border',
-              aqiMeta.badgeClass
-            )}
-            title={`Demo Air Quality Scenario: ${aqData.aqi} (${aqiMeta.category}) - Live CPCB integration pending`}
-          >
-            <ShieldAlert className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            <span>AQI {aqData.aqi}</span>
-            <span className="text-[10px] uppercase tracking-wider font-extrabold">• {aqiMeta.category} (Demo)</span>
-          </div>
+          {/* Shared Telemetry AQI Indicator */}
+          {isLoading ? (
+            <div 
+              data-testid="navbar-aqi-loading"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 animate-pulse"
+              aria-label="Loading air quality telemetry"
+            >
+              <span className="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500 animate-ping" />
+              <span>Loading AQI...</span>
+            </div>
+          ) : isError || !aqData ? (
+            <div 
+              data-testid="navbar-aqi-unavailable"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+              title="Air quality data currently unavailable"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-slate-500 shrink-0" aria-hidden="true" />
+              <span>AQI --</span>
+              <span className="text-[10px] uppercase tracking-wider font-extrabold">• Unavailable</span>
+            </div>
+          ) : aqData.aqi === null || aqData.aqi === undefined ? (
+            <div 
+              data-testid="navbar-aqi-missing-naqi"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+              title={aqData.indianNaqiUnavailableReason || "Official Indian NAQI unavailable (Modelled data only)"}
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-slate-500 shrink-0" aria-hidden="true" />
+              <span>AQI --</span>
+              <span className="text-[10px] uppercase tracking-wider font-extrabold">• NAQI Unavailable</span>
+            </div>
+          ) : isLive ? (
+            (() => {
+              const aqiMeta = getAQIMetadata(aqData.aqi);
+              const provenanceInfo = determineTelemetryProvenance(aqData.provenance, isLive);
+
+              return (
+                <div 
+                  data-testid="navbar-aqi-live"
+                  className={clsx(
+                    'hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border',
+                    aqiMeta.badgeClass
+                  )}
+                  title={`${provenanceInfo.statusLabel}: AQI ${aqData.aqi} (${aqiMeta.category}) • ${aqData.station.name} • ${aqData.provenance.sourceAttribution || 'Open-Meteo CAMS'}`}
+                >
+                  {provenanceInfo.isStale ? (
+                    <Clock className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                  ) : (
+                    <Radio className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 animate-pulse" aria-hidden="true" />
+                  )}
+                  <span>AQI {aqData.aqi}</span>
+                  <span className="text-[10px] uppercase tracking-wider font-extrabold">• {aqiMeta.category} ({provenanceInfo.tag})</span>
+                </div>
+              );
+            })()
+          ) : (
+            (() => {
+              const aqiMeta = getAQIMetadata(aqData.aqi);
+              return (
+                <div 
+                  data-testid="navbar-aqi-demo"
+                  className={clsx(
+                    'hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border',
+                    aqiMeta.badgeClass
+                  )}
+                  title={`Simulated Demo Scenario: AQI ${aqData.aqi} (${aqiMeta.category}) - Backend offline / Live integration pending`}
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                  <span>AQI {aqData.aqi}</span>
+                  <span className="text-[10px] uppercase tracking-wider font-extrabold">• {aqiMeta.category} (Demo)</span>
+                </div>
+              );
+            })()
+          )}
 
           {/* Theme Toggle */}
           <button
@@ -138,8 +202,22 @@ export const Navbar: React.FC = () => {
             );
           })}
           <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 px-3">
-            <span>Scenario Node:</span>
-            <span className="font-semibold text-slate-800 dark:text-slate-200">{currentLocObj.name}</span>
+            <span>Monitoring Station:</span>
+            <span className="font-semibold text-slate-800 dark:text-slate-200">{currentLocObj.name.split(',')[0]}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-slate-500 px-3">
+            <span>Air Quality:</span>
+            <span className="font-semibold text-slate-800 dark:text-slate-200">
+              {isLoading ? (
+                'Loading...'
+              ) : isError || !aqData ? (
+                'Unavailable'
+              ) : aqData.aqi === null || aqData.aqi === undefined ? (
+                'NAQI Unavailable'
+              ) : (
+                `AQI ${aqData.aqi} • ${getAQIMetadata(aqData.aqi).category} (${determineTelemetryProvenance(aqData.provenance, isLive).tag})`
+              )}
+            </span>
           </div>
         </div>
       )}

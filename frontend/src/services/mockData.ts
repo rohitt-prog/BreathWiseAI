@@ -238,7 +238,7 @@ export const MOCK_COMMUTE_COMPARISON: CommuteModeComparison[] = [
     emissionScore: 'A+',
     emissionText: 'Zero emissions; purely active sustainable transit.',
     personalExposure: 'Hazardous',
-    exposureExplanation: 'Heavy cardiovascular breathing in 368 AQI smog increases deep alveolar particulate deposition by 6x.',
+    exposureExplanation: 'Heavy physical exertion along traffic corridors in elevated smog increases overall respiratory particulate intake.',
     recommendedVerdict: 'Hazardous to Lungs',
     maskRequired: true
   },

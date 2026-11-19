@@ -1,14 +1,25 @@
-import React from 'react';
-import { MOCK_DAILY_PLAN, MOCK_AIR_QUALITY_DATA } from '../../services/mockData';
+import React, { useMemo } from 'react';
 import { useAppStore } from '../../stores/useAppStore';
+import { MOCK_LOCATIONS } from '../../services/mockData';
+import { useAirQualityQuery } from '../../hooks/useAirQualityQuery';
 import { getAQIMetadata } from '../../utils/aqiUtils';
+import {
+  evaluateIndoorVentilation,
+  getPurifierGuidance,
+  getSourceControlProtocols
+} from '../../utils/indoorUtils';
 import {
   Home,
   AlertOctagon,
   Sparkles,
   XCircle,
   Check,
-  Info
+  Info,
+  Wind,
+  Radio,
+  Clock,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import clsx from 'clsx';
@@ -67,82 +78,285 @@ const NAQI_VENTILATION_DECISION_TABLE: VentilationDecisionTier[] = [
 
 export const IndoorAirPage: React.FC = () => {
   const { currentLocationId } = useAppStore();
-  const aqData = MOCK_AIR_QUALITY_DATA[currentLocationId] || MOCK_AIR_QUALITY_DATA['del_anand_vihar'];
-  const indoor = MOCK_DAILY_PLAN.indoorProtocols;
+  const currentLocObj = MOCK_LOCATIONS.find((l) => l.id === currentLocationId) || MOCK_LOCATIONS[0];
 
-  // Utilize official Indian NAQI categories from existing utility (0-50, 51-100, 101-200, 201-300, 301-400, 401-500)
-  const aqiMeta = getAQIMetadata(aqData.aqi);
-  const { category, range } = aqiMeta;
+  const { data: telemetry, isLoading, isError, error, refetch } = useAirQualityQuery();
 
-  const isSevereOrVeryPoor = category === 'Very Poor' || category === 'Severe';
-  const isPoor = category === 'Poor';
-  const isModerate = category === 'Moderate';
-  const isUnavailable = category === 'Unavailable';
+  const isLive = !isError && Boolean(telemetry?.isLive);
+  const aqData = telemetry?.data ?? null;
 
-  const ventilationTitle = isSevereOrVeryPoor
-    ? 'RESTRICT OUTDOOR AIR INFILTRATION'
-    : isPoor
-    ? 'LIMIT UNNECESSARY INFILTRATION'
-    : isModerate
-    ? 'SELECTIVE VENTILATION CONSIDERATION'
-    : 'CONDITIONAL VENTILATION CONSIDERATION';
+  const ventilationResult = useMemo(
+    () => evaluateIndoorVentilation(aqData, isLive),
+    [aqData, isLive]
+  );
 
-  const ventilationGuidance = isSevereOrVeryPoor
-    ? `Ambient air is currently in the ${category} category (${range}). Households should generally keep exterior windows closed to limit particulate infiltration, while also managing indoor-generated pollutants through appropriate kitchen exhaust and indoor filtration in recirculation mode.`
-    : isPoor
-    ? `Ambient air is currently in the Poor category (201–300). Minimize opening external windows to limit outdoor particulate infiltration, while prioritizing internal air filtration and kitchen exhaust to manage indoor air needs.`
-    : isModerate
-    ? `Ambient air is in the Moderate category (101–200). Any ventilation decision must consider immediate outdoor conditions (such as street dust, smoke, and traffic) alongside indoor air needs; brief airing may be evaluated if indoor air is stuffy, but do not automatically open windows.`
-    : isUnavailable
-    ? `Official Indian NAQI is currently unavailable pending certified CPCB ground station connection. Atmospheric chemistry models report ambient conditions. Households should balance outdoor infiltration against indoor air needs (cooking exhaust, internal filtration) and inspect local immediate conditions before opening windows.`
-    : `Ambient air is in the ${category} category (${range}). Outdoor air is relatively cleaner; conditional ventilation may be considered to refresh indoor air, but households must evaluate immediate outdoor conditions and indoor air needs rather than automatically opening windows based on AQI alone.`;
+  const purifierGuidance = useMemo(
+    () => getPurifierGuidance(ventilationResult.pm25Concentration, ventilationResult.isLiveVerified),
+    [ventilationResult.pm25Concentration, ventilationResult.isLiveVerified]
+  );
+
+  const sourceControlTips = useMemo(() => getSourceControlProtocols(), []);
+
+  // Provenance metadata & badges
+  const provenance = ventilationResult.provenance;
+  const isObservation = provenance.tag === 'Live Sensor' || provenance.tag === 'Stale Sensor';
+  const isModelled = provenance.tag === 'Modelled' || provenance.tag === 'Stale Modelled';
+  const isDemo = provenance.tag === 'Demo';
+
+  let provenanceBadgeClass =
+    'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700';
+  let badgeLabel = provenance.statusLabel;
+
+  if (provenance.tag === 'Live Sensor') {
+    provenanceBadgeClass =
+      'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800';
+    badgeLabel = 'Live Ground Sensor';
+  } else if (provenance.tag === 'Stale Sensor') {
+    provenanceBadgeClass =
+      'bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-300 border-rose-300 dark:border-rose-800';
+    badgeLabel = 'Stale Ground Sensor';
+  } else if (provenance.tag === 'Modelled') {
+    provenanceBadgeClass =
+      'bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-300 border-sky-300 dark:border-sky-800';
+    badgeLabel = 'Regional Atmospheric Model';
+  } else if (provenance.tag === 'Stale Modelled') {
+    provenanceBadgeClass =
+      'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-800';
+    badgeLabel = 'Stale Atmospheric Model';
+  } else if (provenance.tag === 'Demo') {
+    provenanceBadgeClass =
+      'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-800';
+    badgeLabel = 'Simulated Demo';
+  } else if (provenance.tag === 'Unverified') {
+    provenanceBadgeClass =
+      'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700';
+    badgeLabel = 'Unverified Telemetry';
+  }
+
+  const providerText =
+    aqData?.provenance?.sourceAttribution ||
+    (isModelled
+      ? 'Regional Atmospheric Chemistry Model'
+      : isObservation
+      ? 'Ground Monitoring Station'
+      : isDemo
+      ? 'Curated Demonstration Scenario'
+      : 'Unverified Provider');
+
+  // Validate AQI: finite, non-negative, and within official NAQI range [0, 500]
+  const isValidAqi =
+    typeof aqData?.aqi === 'number' &&
+    Number.isFinite(aqData.aqi) &&
+    aqData.aqi >= 0 &&
+    aqData.aqi <= 500;
+
+  // Gate NAQI category metadata: strictly Unavailable if unverified, demo, stale, unknown, or invalid AQI
+  const aqiMeta = getAQIMetadata(isValidAqi && ventilationResult.isLiveVerified ? aqData?.aqi : null);
+  const { category } = aqiMeta;
+
+  // Gate Current tier highlight in reference table: strictly null if unverified, demo, stale, unknown, or invalid
+  const currentHighlightTier =
+    ventilationResult.isLiveVerified && isValidAqi && category !== 'Unavailable'
+      ? category
+      : null;
+
+  // Master verdict badge styling
+  const isInsufficient = ventilationResult.status === 'telemetry_insufficient';
+  const isRestricted = ventilationResult.status === 'restricted';
+  const isSelective = ventilationResult.status === 'selective';
+
+  const masterVerdictClass = clsx(
+    'flex items-center gap-2.5 p-3 rounded-xl border',
+    isInsufficient
+      ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+      : isRestricted
+      ? 'bg-red-100 dark:bg-red-950/60 border-red-300 dark:border-red-800 text-red-950 dark:text-red-200'
+      : isSelective
+      ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-200'
+      : 'bg-emerald-100 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-200'
+  );
 
   return (
     <div className="space-y-6 sm:space-y-8">
-
       {/* Page Title & Status */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131B2E] border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
               Indoor Air Quality Assistant
             </h1>
-            <Badge variant="info" icon={Home} size="sm">
-              Residential Guidance (Demo Scenario)
+            <Badge
+              variant={
+                isInsufficient
+                  ? 'neutral'
+                  : isRestricted
+                  ? 'danger'
+                  : isSelective
+                  ? 'warning'
+                  : 'success'
+              }
+              icon={Home}
+              size="sm"
+            >
+              Residential Guidance ({badgeLabel})
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Adapting residential ventilation and filtration to ambient air conditions (AQI: {aqData.aqi ?? 'Awaiting CPCB'} • {category})
+            {ventilationResult.isLiveVerified && isValidAqi
+              ? `Adapting residential ventilation and filtration to verified ambient outdoor conditions (AQI: ${aqData?.aqi} • ${category})`
+              : 'Residential ventilation and filtration framework (Real-time outdoor telemetry unverified)'}
           </p>
         </div>
 
-        {/* Master Ventilation Verdict (Conditional on Indian NAQI Category) */}
-        <div className={clsx(
-          'flex items-center gap-2.5 p-3 rounded-xl border',
-          isSevereOrVeryPoor
-            ? 'bg-red-100 dark:bg-red-950/60 border-red-300 dark:border-red-800 text-red-950 dark:text-red-200'
-            : isPoor
-            ? 'bg-orange-100 dark:bg-orange-950/60 border-orange-300 dark:border-orange-800 text-orange-950 dark:text-orange-200'
-            : isModerate
-            ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-200'
-            : 'bg-emerald-100 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-200'
-        )}>
-          <XCircle className="w-5 h-5 shrink-0 text-current" />
+        {/* Master Ventilation Verdict */}
+        <div className={masterVerdictClass} data-testid="master-ventilation-verdict">
+          {isInsufficient ? (
+            <Clock className="w-5 h-5 shrink-0 text-current" />
+          ) : isRestricted ? (
+            <XCircle className="w-5 h-5 shrink-0 text-current" />
+          ) : isSelective ? (
+            <AlertTriangle className="w-5 h-5 shrink-0 text-current" />
+          ) : (
+            <Check className="w-5 h-5 shrink-0 text-current" />
+          )}
           <div>
-            <span className="text-xs font-extrabold uppercase tracking-wider block">Ventilation Recommendation</span>
-            <span className="text-xs font-semibold">{ventilationTitle}</span>
+            <span className="text-xs font-extrabold uppercase tracking-wider block">
+              Ventilation Recommendation
+            </span>
+            <span className="text-xs font-semibold">{ventilationResult.verdictTitle}</span>
           </div>
         </div>
       </div>
 
-      {/* Household Ventilation Context Framework & Decision Table (C5-B) */}
+      {/* Loading State Banner */}
+      {isLoading && (
+        <div
+          data-testid="indoor-loading"
+          className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 animate-pulse text-xs text-slate-600 dark:text-slate-400"
+        >
+          <span className="w-3 h-3 rounded-full bg-slate-400 animate-ping" />
+          <span>Loading outdoor ambient telemetry and verifying data freshness...</span>
+        </div>
+      )}
+
+      {/* Error State Banner */}
+      {isError && (
+        <div
+          data-testid="indoor-error"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200"
+        >
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              Telemetry connection offline ({error?.message || 'Failed to fetch ambient data'}). Operating in fail-closed mode: real-time condition-dependent ventilation directives are suspended.
+            </span>
+          </div>
+          <button
+            onClick={() => refetch()}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-200 dark:bg-amber-900 hover:bg-amber-300 text-amber-950 dark:text-amber-100 font-semibold transition-colors self-start sm:self-auto"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Retry</span>
+          </button>
+        </div>
+      )}
+
+      {/* Outdoor Ambient Telemetry Disclosure Card */}
+      <section className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#131B2E] border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <Radio className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="font-bold text-sm text-slate-900 dark:text-white">
+              Outdoor Ambient Telemetry • Not an Indoor Sensor
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className={clsx('text-[11px] font-semibold px-2.5 py-0.5 rounded-full border', provenanceBadgeClass)}
+              data-testid="telemetry-provenance-badge"
+            >
+              {badgeLabel}
+            </span>
+          </div>
+        </div>
+
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+          {ventilationResult.outdoorDisclosure}
+        </p>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 block">
+              Outdoor PM2.5
+            </span>
+            <span
+              className="text-base sm:text-lg font-mono font-extrabold text-slate-900 dark:text-slate-100"
+              data-testid="outdoor-pm25"
+            >
+              {ventilationResult.pm25Concentration !== null
+                ? `${ventilationResult.pm25Concentration} µg/m³`
+                : '--'}
+            </span>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 block">
+              Outdoor PM10
+            </span>
+            <span
+              className="text-base sm:text-lg font-mono font-extrabold text-slate-900 dark:text-slate-100"
+              data-testid="outdoor-pm10"
+            >
+              {ventilationResult.pm10Concentration !== null
+                ? `${ventilationResult.pm10Concentration} µg/m³`
+                : '--'}
+            </span>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 block">
+              Official NAQI
+            </span>
+            <span
+              className="text-base sm:text-lg font-mono font-extrabold text-slate-900 dark:text-slate-100"
+              data-testid="outdoor-aqi"
+            >
+              {isValidAqi ? aqData?.aqi : 'Unavailable'}
+            </span>
+            <span
+              className="text-[10px] text-slate-600 dark:text-slate-400 block truncate"
+              data-testid="outdoor-aqi-category"
+            >
+              {category}
+            </span>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 block">
+              Station / Provider
+            </span>
+            <span
+              className="text-xs font-semibold text-slate-900 dark:text-slate-100 block truncate"
+              title={currentLocObj.name}
+            >
+              {currentLocObj.name.split(',')[0]}
+            </span>
+            <span
+              className="text-[10px] text-slate-600 dark:text-slate-400 block truncate"
+              title={providerText}
+              data-testid="provider-attribution"
+            >
+              {providerText}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Household Ventilation Context Framework & Decision Table */}
       <section className="p-4 sm:p-5 rounded-xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 space-y-4">
         <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
           <Info className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>Household Ventilation Framework: Outdoor Levels vs. Indoor Sources</span>
         </div>
-        <p className="leading-relaxed">
-          {ventilationGuidance}
+        <p className="leading-relaxed" data-testid="ventilation-explanation">
+          {ventilationResult.explanation}
         </p>
         <p className="leading-relaxed text-slate-500 dark:text-slate-400">
           Outdoor AQI is an important indicator, but it is not a universally sufficient decision rule by itself. Any ventilation decision must consider immediate outdoor conditions and indoor air needs; healthy indoor air requires balancing outdoor infiltration against indoor-generated pollutants (cooking emissions, accumulated carbon dioxide, and fine dust). Do not automatically recommend opening windows based solely on an AQI number.
@@ -150,18 +364,40 @@ export const IndoorAirPage: React.FC = () => {
 
         {/* Ventilation Decision Reference Table */}
         <div className="space-y-2 pt-1">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">
-              Official Indian NAQI Household Ventilation Reference Table
+              Educational Household Ventilation Reference Framework
             </h4>
             <span className="text-[11px] text-slate-500 dark:text-slate-400">
-              Conditional guidance across all 6 official tiers
+              General educational framework across 6 NAQI tiers • Not official CPCB protocol
             </span>
           </div>
 
+          {currentHighlightTier === null ? (
+            <div
+              className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-2"
+              data-testid="no-current-tier-notice"
+            >
+              <Info className="w-4 h-4 text-slate-500 shrink-0" />
+              <span>
+                <strong>Educational Reference Only:</strong> Real-time ambient telemetry is unverified, stale, simulated, or unavailable. No row in this reference table represents your current condition.
+              </span>
+            </div>
+          ) : (
+            <div
+              className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-900 dark:text-emerald-200 flex items-center gap-2"
+              data-testid="current-tier-notice"
+            >
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                <strong>Verified Ambient Telemetry:</strong> Highlighting category &ldquo;{currentHighlightTier}&rdquo; based on verified real-time ambient telemetry.
+              </span>
+            </div>
+          )}
+
           <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/60">
             <table className="w-full text-left text-xs border-collapse">
-              <caption className="sr-only">Official Indian NAQI Household Ventilation Decision Matrix</caption>
+              <caption className="sr-only">General Educational Household Ventilation Framework across NAQI Tiers</caption>
               <thead className="bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px]">
                 <tr>
                   <th scope="col" className="p-2.5 sm:p-3">NAQI Category</th>
@@ -172,7 +408,7 @@ export const IndoorAirPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-[#131B2E]">
                 {NAQI_VENTILATION_DECISION_TABLE.map((tier) => {
-                  const isCurrentTier = tier.category === category;
+                  const isCurrentTier = currentHighlightTier !== null && tier.category === currentHighlightTier;
                   return (
                     <tr
                       key={tier.category}
@@ -187,7 +423,10 @@ export const IndoorAirPage: React.FC = () => {
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-slate-900 dark:text-slate-100">{tier.category}</span>
                           {isCurrentTier && (
-                            <span className="text-[10px] bg-emerald-600 text-white font-bold px-1.5 py-0.5 rounded-full">
+                            <span
+                              className="text-[10px] bg-emerald-600 text-white font-bold px-1.5 py-0.5 rounded-full"
+                              data-testid="current-naqi-badge"
+                            >
                               Current
                             </span>
                           )}
@@ -211,94 +450,158 @@ export const IndoorAirPage: React.FC = () => {
         </div>
 
         <p className="text-[11px] text-slate-500 italic pt-1 border-t border-slate-200/60 dark:border-slate-800">
-          * Notice: Demonstrating simulated scenario for {aqData.station.name}. This guidance is informational and educational; it does not constitute clinical or personalized medical advice.
+          * Educational Framework Notice: This household ventilation matrix is an educational decision-support framework and is not an official CPCB-published ventilation protocol. Demonstrating informational principles for {currentLocObj.name}. It does not constitute clinical or personalized medical advice.
         </p>
       </section>
 
-      {/* Critical Safety Rule: Banned Ozone Generators (C5-E) */}
+      {/* Critical Safety Rule: Banned Ozone Generators */}
       <section className="p-5 sm:p-6 rounded-2xl bg-red-950/20 border-2 border-red-600/70 text-red-950 dark:text-red-100 space-y-2 shadow-sm">
         <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold text-sm sm:text-base">
           <AlertOctagon className="w-5 h-5 shrink-0" />
           <span>STRICT AIR SAFETY DIRECTIVE: Ozone Air Cleaners Banned</span>
         </div>
         <p className="text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-          {indoor.bannedPracticesWarning}
+          {purifierGuidance.ozoneWarning}
         </p>
         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-          * BreatheWise AI adheres strictly to Central Pollution Control Board and US EPA guidelines. Only mechanical HEPA filtration and activated carbon absorption are safe for occupied residential spaces.
+          * BreatheWise AI adheres strictly to Central Pollution Control Board and US EPA guidelines. Only mechanical HEPA filtration and activated carbon absorption are safe for occupied residential spaces. Never use ozone generators or ionizing air cleaners in occupied rooms.
         </p>
+      </section>
+
+      {/* Mechanical Filtration & Air Purifier Guidance Section */}
+      <section className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131B2E] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <Wind className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">
+              Mechanical Air Filtration & Purifier Operation
+            </h3>
+          </div>
+          <span
+            className={clsx(
+              'text-xs font-semibold px-2.5 py-1 rounded-full border',
+              purifierGuidance.isConditionDependent
+                ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+            )}
+            data-testid="purifier-mode-badge"
+          >
+            {purifierGuidance.mode || 'Educational Baseline (General Principles)'}
+          </span>
+        </div>
+
+        <p
+          className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed"
+          data-testid="purifier-advice"
+        >
+          {purifierGuidance.operationalAdvice}
+        </p>
+
+        <div className="pt-2 space-y-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 block">
+            Real-World Factors Affecting Purifier Effectiveness:
+          </span>
+          <ul className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
+            {purifierGuidance.effectivenessFactors.map((factor, idx) => (
+              <li key={idx} className="flex items-start gap-2">
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">•</span>
+                <span>{factor}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
 
       {/* Room-by-Room Optimization Protocols */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-        {/* Living Room */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131B2E] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-            <h3 className="font-bold text-slate-900 dark:text-white text-base">Living Room / Hall</h3>
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Primary Hub</span>
-          </div>
-
-          <div className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-            <div>
-              <span className="font-semibold text-slate-900 dark:text-white block">Purifier Operation & Filter Maintenance (C5-D):</span>
-              <p>
-                Run purifiers in continuous recirculation mode in occupied spaces. Check, clean, or maintain pre-filters according to the manufacturer's instructions. During severe pollution periods, inspect filters more frequently to prevent heavy dust accumulation from restricting airflow to the HEPA media.
-              </p>
-            </div>
-            <div>
-              <span className="font-semibold text-slate-900 dark:text-white block">Infiltration Management:</span>
-              <p>
-                During Very Poor and Severe pollution, households should generally keep exterior doors and windows closed to limit particulate infiltration, while managing indoor air needs with mechanical filtration. When ambient air improves, conditional airing may be evaluated considering immediate outdoor conditions and indoor air needs.
-              </p>
-            </div>
-          </div>
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+            Room-by-Room Best Practices (Educational Framework)
+          </h3>
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            General household measures • Independent of live telemetry
+          </span>
         </div>
 
-        {/* Kitchen (C5-C) */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131B2E] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-            <h3 className="font-bold text-slate-900 dark:text-white text-base">Kitchen & Cooking</h3>
-            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">Indoor Emissions Source</span>
-          </div>
-
-          <div className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-            <div>
-              <span className="font-semibold text-slate-900 dark:text-white block">Stove Types & Combustion Byproducts (C5-C):</span>
-              <p>
-                <strong>Gas cooking</strong> produces combustion-related byproducts, including nitrogen dioxide (NO2) and carbon monoxide. <strong>Electric and induction cooktops</strong> do not produce combustion-related NO2, but all cooking—especially high-temperature frying—generates fine airborne oil particles and smoke.
-              </p>
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Living Room */}
+          <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131B2E] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h4 className="font-bold text-slate-900 dark:text-white text-base">Living Room / Hall</h4>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Primary Hub</span>
             </div>
-            <div>
-              <span className="font-semibold text-slate-900 dark:text-white block">Kitchen Exhaust:</span>
-              <p>
-                Always operate an active kitchen chimney hood or external exhaust fan during cooking, regardless of stove type. Keep interior doors closed to prevent cooking aerosols from spreading into sleeping areas.
-              </p>
-            </div>
-          </div>
-        </div>
 
-        {/* Bedroom */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131B2E] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-            <h3 className="font-bold text-slate-900 dark:text-white text-base">Bedroom & Sleep</h3>
-            <span className="text-xs font-bold text-sky-600 dark:text-sky-400">Recovery Sanctuary</span>
-          </div>
-
-          <div className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-            <div>
-              <span className="font-semibold text-slate-900 dark:text-white block">Night Protocol:</span>
-              <p>Run clean air filtration in the bedroom prior to and during sleep. Avoid burning mosquito coils or incense, which produce heavy indoor particulate loads.</p>
-            </div>
-            <div>
-              <span className="font-semibold text-slate-900 dark:text-white block">Surface Cleaning:</span>
-              <p>Damp mop or wipe hard surfaces rather than dry sweeping to prevent re-suspending settled dust into the breathing zone.</p>
+            <div className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+              <div>
+                <span className="font-semibold text-slate-900 dark:text-white block">
+                  Purifier Operation & Filter Maintenance:
+                </span>
+                <p>
+                  General Principle: Mechanical purifiers operate via fibrous physical filtration. Pre-filters and HEPA cartridges should be inspected and serviced according to manufacturer instructions. Ensure device intake and exhaust grilles remain unobstructed to permit effective air circulation throughout the space.
+                </p>
+              </div>
+              <div>
+                <span className="font-semibold text-slate-900 dark:text-white block">
+                  Infiltration Management:
+                </span>
+                <p>
+                  General Infiltration Principle: Infiltration rates through exterior doors and windows influence indoor particulate concentrations. In clean ambient conditions, natural ventilation can be evaluated; during elevated outdoor pollution, reducing unmanaged infiltration protects indoor air.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* DIY & Non-Electrical Risk Reduction Checklist */}
+          {/* Kitchen */}
+          <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131B2E] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h4 className="font-bold text-slate-900 dark:text-white text-base">Kitchen & Cooking</h4>
+              <span className="text-xs font-bold text-amber-600 dark:text-amber-400">Indoor Emissions Source</span>
+            </div>
+
+            <div className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+              <div>
+                <span className="font-semibold text-slate-900 dark:text-white block">
+                  Stove Types & Combustion Byproducts:
+                </span>
+                <p>
+                  <strong>Gas cooking</strong> produces combustion-related byproducts, including nitrogen dioxide (NO2) and carbon monoxide. <strong>Electric and induction cooktops</strong> do not produce combustion-related NO2, but all cooking—especially high-temperature frying—generates fine airborne oil particles and smoke.
+                </p>
+              </div>
+              <div>
+                <span className="font-semibold text-slate-900 dark:text-white block">Kitchen Exhaust:</span>
+                <p>
+                  Always operate an active kitchen chimney hood or external exhaust fan during cooking, regardless of stove type. Keep interior doors closed to prevent cooking aerosols from spreading into sleeping areas.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Bedroom */}
+          <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131B2E] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h4 className="font-bold text-slate-900 dark:text-white text-base">Bedroom & Sleep</h4>
+              <span className="text-xs font-bold text-sky-600 dark:text-sky-400">Recovery Sanctuary</span>
+            </div>
+
+            <div className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+              <div>
+                <span className="font-semibold text-slate-900 dark:text-white block">Night Protocol:</span>
+                <p>
+                  General Night Practice: Run clean air filtration in the bedroom prior to and during sleep. Avoid burning mosquito coils or incense, which produce heavy indoor particulate loads.
+                </p>
+              </div>
+              <div>
+                <span className="font-semibold text-slate-900 dark:text-white block">Surface Cleaning:</span>
+                <p>
+                  Damp mop or wipe hard surfaces rather than dry sweeping to prevent re-suspending settled dust into the breathing zone.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Practical Household Mitigation Measures (Non-Electrical) */}
       <section className="p-6 sm:p-7 rounded-2xl bg-white dark:bg-[#131B2E] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-emerald-600" />
@@ -311,7 +614,7 @@ export const IndoorAirPage: React.FC = () => {
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-          {indoor.diyMitigationTips.map((tip, idx) => (
+          {sourceControlTips.map((tip, idx) => (
             <div
               key={idx}
               className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800"
@@ -319,9 +622,17 @@ export const IndoorAirPage: React.FC = () => {
               <div className="p-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 mt-0.5 shrink-0">
                 <Check className="w-3.5 h-3.5" />
               </div>
-              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-snug">
-                {tip}
-              </p>
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block">
+                  {tip.title}
+                </span>
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-snug">
+                  {tip.guidance}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                  {tip.rationale}
+                </p>
+              </div>
             </div>
           ))}
         </div>

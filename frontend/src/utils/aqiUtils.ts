@@ -1,4 +1,4 @@
-import { AQICategory } from '../types/airQuality';
+import { AQICategory, CurrentAirQualityData } from '../types/airQuality';
 import {
   CheckCircle2,
   Smile,
@@ -24,18 +24,30 @@ export interface AQIMetadata {
 }
 
 export function getAQIMetadata(aqi: number | null | undefined): AQIMetadata {
-  if (aqi === null || aqi === undefined) {
+  const isInvalid =
+    aqi === null ||
+    aqi === undefined ||
+    typeof aqi !== 'number' ||
+    !Number.isFinite(aqi) ||
+    aqi < 0 ||
+    aqi > 500;
+
+  if (isInvalid) {
+    const isOutOfRange =
+      typeof aqi === 'number' && (!Number.isFinite(aqi) || aqi < 0 || aqi > 500);
     return {
       category: 'Unavailable',
-      range: 'Awaiting CPCB Verification',
+      range: isOutOfRange ? 'Invalid AQI Value' : 'Awaiting CPCB Verification',
       bgClass: 'bg-slate-500',
       textClass: 'text-white',
       borderClass: 'border-slate-400',
       badgeClass: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700',
       hexCode: '#64748B',
       icon: HelpCircle,
-      nonColorLabel: 'Official NAQI Unavailable (Modelled Telemetry Only)',
-      healthSummary: 'Official Indian NAQI is unavailable because certified physical ground station observations from CPCB are not connected. Atmospheric chemistry model forecasts are available below.',
+      nonColorLabel: isOutOfRange ? 'Invalid AQI' : 'Official NAQI Unavailable (Modelled Telemetry Only)',
+      healthSummary: isOutOfRange
+        ? 'AQI value is invalid, negative, or out of the standard 0–500 Indian NAQI range.'
+        : 'Official Indian NAQI is unavailable because certified physical ground station observations from CPCB are not connected. Atmospheric chemistry model forecasts are available below.',
     };
   }
 
@@ -123,6 +135,96 @@ export function getAQIMetadata(aqi: number | null | undefined): AQIMetadata {
   };
 }
 
+export function isValidNumericConcentration(val: unknown): val is number {
+  return typeof val === 'number' && Number.isFinite(val) && val >= 0;
+}
+
 export function formatConcentration(val: number, unit: string): string {
   return `${Math.round(val * 10) / 10} ${unit}`;
+}
+
+export interface ProvenanceDisplayInfo {
+  tag: string;
+  isStale: boolean;
+  statusLabel: string;
+}
+
+/**
+ * Evaluates telemetry provenance and temporal freshness tiers using
+ * documented backend classifications.
+ *
+ * Distinguishes:
+ * - Fresh modelled telemetry ('Modelled')
+ * - Stale modelled telemetry ('Stale Modelled')
+ * - Fresh physical sensor observations ('Live Sensor')
+ * - Stale physical sensor observations ('Stale Sensor')
+ * - Simulated demo fallback ('Demo')
+ *
+ * Rule: Missing freshness metadata is never treated as proof of freshness.
+ */
+export function determineTelemetryProvenance(
+  provenance: CurrentAirQualityData['provenance'] | undefined | null,
+  isLive: boolean
+): ProvenanceDisplayInfo {
+  if (!isLive || !provenance || provenance.dataSource === 'SIMULATED_DEMO') {
+    return { tag: 'Demo', isStale: false, statusLabel: 'Simulated Demo' };
+  }
+
+  if (provenance.isVerified === false) {
+    return { tag: 'Unverified', isStale: true, statusLabel: 'Unverified Telemetry' };
+  }
+
+  const dataSource = provenance.dataSource;
+  const isObservation =
+    dataSource === 'OBSERVATION' ||
+    dataSource === 'CPCB_OFFICIAL' ||
+    dataSource === 'OPENAQ_V3';
+  const isModelled =
+    dataSource === 'MODELLED_FORECAST' ||
+    dataSource === 'OPEN_METEO_MODELLED';
+
+  if (isObservation) {
+    const obsFreshness = provenance.observationFreshness;
+    const retFreshness = provenance.retrievalFreshness;
+
+    // Fresh physical observation requires BOTH observation and retrieval to be explicitly FRESH or RECENT
+    const hasValidObsFreshness = obsFreshness === 'FRESH' || obsFreshness === 'RECENT';
+    const hasValidRetrieval = retFreshness === 'FRESH' || retFreshness === 'RECENT';
+
+    const isObsFresh = hasValidObsFreshness && hasValidRetrieval;
+
+    if (isObsFresh) {
+      return { tag: 'Live Sensor', isStale: false, statusLabel: 'Live Ground Sensor' };
+    }
+    return { tag: 'Stale Sensor', isStale: true, statusLabel: 'Stale Ground Sensor' };
+  }
+
+  if (isModelled) {
+    const retFreshness = provenance.retrievalFreshness;
+    const forecastValidity = provenance.forecastValidity;
+    const modelRunFreshness = provenance.modelRunFreshness;
+
+    // Explicit stale or invalid indicators
+    const hasStaleIndicator =
+      retFreshness === 'STALE' ||
+      retFreshness === 'INVALID' ||
+      retFreshness === 'NOT_CONFIGURED' ||
+      forecastValidity === 'HISTORICAL_PERIOD' ||
+      modelRunFreshness === 'STALE' ||
+      modelRunFreshness === 'INVALID';
+
+    // Positive freshness verification (missing metadata is never proof of freshness)
+    const hasValidRetrieval = retFreshness === 'FRESH' || retFreshness === 'RECENT';
+    const hasValidForecast = forecastValidity === 'CURRENT_PERIOD' || forecastValidity === 'FUTURE_PERIOD';
+
+    const isFreshModel = !hasStaleIndicator && hasValidRetrieval && hasValidForecast;
+
+    if (isFreshModel) {
+      return { tag: 'Modelled', isStale: false, statusLabel: 'Regional Atmospheric Model' };
+    }
+    return { tag: 'Stale Modelled', isStale: true, statusLabel: 'Stale Atmospheric Model' };
+  }
+
+  // Unrecognized data source: conservative fail-closed classification
+  return { tag: 'Unverified', isStale: true, statusLabel: 'Unverified Telemetry' };
 }

@@ -3,7 +3,13 @@
  * Supports live Open-Meteo modelled telemetry, OpenAQ physical observations,
  * and graceful fallback to simulated demo scenarios when offline.
  */
-import { CurrentAirQualityData, PollutantDetail } from '../types/airQuality';
+import {
+  CurrentAirQualityData,
+  PollutantDetail,
+  AirQualityForecastResponse,
+  HourlyForecastPoint,
+  ForecastQueryResult
+} from '../types/airQuality';
 import { AIInsightResponse, ActivityContext } from '../types/ai';
 import { MOCK_AIR_QUALITY_DATA } from './mockData';
 
@@ -20,11 +26,11 @@ export const DEFAULT_DEMO_INSIGHTS: AIInsightResponse = {
   model_id: null,
   prompt_version: 'v1.0.0',
   generated_at: new Date().toISOString(),
-  summary: 'Illustrative winter condition demo: elevated particulate levels under boundary layer stagnation.',
-  explanation: 'Curated scenario showing simulated particulate exposure and boundary layer dynamics. Start backend with GEMINI_API_KEY to generate live AI insights.',
+  summary: 'Demonstration scenario: illustrative simulated particulate values.',
+  explanation: 'Curated scenario showing simulated particulate exposure. Start backend with GEMINI_API_KEY to generate live AI insights.',
   supporting_factors: [
     'Simulated PM2.5 elevation',
-    'Low boundary layer mixing ceiling',
+    'Illustrative demonstration scenario',
     'Deterministic safety guardrails verified'
   ],
   recommended_actions: [
@@ -87,6 +93,72 @@ export interface ProvidersStatusResponse {
   providers: ProviderStatus[];
 }
 
+export function getMockForecastResponse(
+  locationId: string,
+  coordinates: { lat: number; lon: number }
+): AirQualityForecastResponse {
+  const baseMock = MOCK_AIR_QUALITY_DATA[locationId] || MOCK_AIR_QUALITY_DATA['del_anand_vihar'];
+  const now = new Date();
+  const hourlyPoints: HourlyForecastPoint[] = [];
+  const startHour = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), 0, 0));
+
+  for (let i = 0; i < 24; i++) {
+    const ptDate = new Date(startHour.getTime() + i * 3600 * 1000);
+    const utcHour = ptDate.getUTCHours();
+
+    let pm25 = 140;
+    let pm10 = 230;
+    let aqiEst = 195;
+
+    if (utcHour >= 6 && utcHour < 11) {
+      pm25 = 185 + (i % 3) * 10;
+      pm10 = 290 + (i % 3) * 15;
+      aqiEst = 235;
+    } else if (utcHour >= 11 && utcHour < 16) {
+      pm25 = 75 + (i % 3) * 5;
+      pm10 = 140 + (i % 3) * 10;
+      aqiEst = 155;
+    } else if (utcHour >= 16 && utcHour < 21) {
+      pm25 = 165 + (i % 3) * 10;
+      pm10 = 265 + (i % 3) * 15;
+      aqiEst = 215;
+    } else {
+      pm25 = 195 + (i % 3) * 8;
+      pm10 = 315 + (i % 3) * 12;
+      aqiEst = 245;
+    }
+
+    hourlyPoints.push({
+      timestamp: ptDate.toISOString(),
+      modelled_aqi_estimate: aqiEst,
+      pm2_5: pm25,
+      pm10: pm10,
+      nitrogen_dioxide: 45.0,
+      sulphur_dioxide: 18.0,
+      ozone: 32.0,
+      data_classification: 'SIMULATED_DEMO'
+    });
+  }
+
+  return {
+    location: {
+      latitude: coordinates.lat,
+      longitude: coordinates.lon,
+      name: baseMock?.station?.name || `${coordinates.lat.toFixed(2)}, ${coordinates.lon.toFixed(2)} (Demo Scenario)`
+    },
+    provider: 'Open-Meteo CAMS Modelled Data (Simulated Demo)',
+    source_type: 'SIMULATED_DEMO',
+    retrieved_at: now.toISOString(),
+    model_run_timestamp: null,
+    model_data_available_at: null,
+    retrieval_freshness: 'FRESH',
+    model_run_freshness: 'UNAVAILABLE',
+    hourly_forecast: hourlyPoints,
+    source_attribution: 'Open-Meteo CAMS Modelled Data (Simulated Demo Scenario)',
+    limitations: ['Curated demonstration scenario. Not live environmental observations. No actionable personal safety recommendations or ventilation directives are generated from synthetic data.']
+  };
+}
+
 export class ApiClient {
   private baseUrl: string;
 
@@ -126,12 +198,74 @@ export class ApiClient {
     return res.json();
   }
 
-  async getForecast(lat: number, lon: number): Promise<any> {
-    const res = await fetch(`${this.baseUrl}/api/v1/air-quality/forecast?latitude=${lat}&longitude=${lon}`);
+  async getForecast(lat: number, lon: number, hours?: number): Promise<AirQualityForecastResponse> {
+    const url = hours
+      ? `${this.baseUrl}/api/v1/air-quality/forecast?latitude=${lat}&longitude=${lon}&hours=${hours}`
+      : `${this.baseUrl}/api/v1/air-quality/forecast?latitude=${lat}&longitude=${lon}`;
+    const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`Forecast request failed with HTTP ${res.status}`);
     }
     return res.json();
+  }
+
+  /**
+   * Resolves hourly forecast data with transparent provenance, strict fail-closed
+   * freshness validation, and optional demo fallback. Re-throws API errors for deterministic UI error states.
+   */
+  async resolveForecastData(
+    locationId: string,
+    coordinates: { lat: number; lon: number },
+    options: { forceDemoMode?: boolean } = {}
+  ): Promise<ForecastQueryResult> {
+    if (options.forceDemoMode) {
+      return {
+        data: getMockForecastResponse(locationId, coordinates),
+        isLive: false,
+        isDemo: true,
+        isStale: false,
+        isUnknownSource: false
+      };
+    }
+
+    const response = await this.getForecast(coordinates.lat, coordinates.lon);
+
+    // Strict positive validation for retrieval freshness:
+    // Only 'FRESH' or 'RECENT' qualify as fresh retrieval.
+    // Missing, undefined, null, 'STALE', 'INVALID', 'NOT_CONFIGURED', or any unrecognized string fail closed to stale.
+    const isRetrievalFresh =
+      response.retrieval_freshness === 'FRESH' || response.retrieval_freshness === 'RECENT';
+
+    // Strict positive validation for model run freshness:
+    // 'FRESH', 'RECENT', or 'UNAVAILABLE' (for providers that do not expose model run timestamp) qualify.
+    // Missing, undefined, null, 'STALE', 'INVALID', or any unrecognized string fail closed to stale.
+    const isModelRunFresh =
+      response.model_run_freshness === 'FRESH' ||
+      response.model_run_freshness === 'RECENT' ||
+      response.model_run_freshness === 'UNAVAILABLE';
+
+    const isStale = !isRetrievalFresh || !isModelRunFresh;
+
+    // Strict positive validation for source classification:
+    // Do not silently classify unknown source types as live.
+    const isKnownModelledSource =
+      response.source_type === 'MODELLED_FORECAST' ||
+      response.source_type === 'OPEN_METEO_MODELLED';
+    const isKnownObservationSource =
+      response.source_type === 'OBSERVATION' ||
+      response.source_type === 'OPENAQ_V3';
+    const isDemo = response.source_type === 'SIMULATED_DEMO';
+
+    const isLive = (isKnownModelledSource || isKnownObservationSource) && !isDemo;
+    const isUnknownSource = !isLive && !isDemo;
+
+    return {
+      data: response,
+      isLive,
+      isDemo,
+      isStale,
+      isUnknownSource
+    };
   }
 
   async fetchAIInsights(

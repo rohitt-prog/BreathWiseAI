@@ -1,8 +1,18 @@
+export type SmogRiskTier = 'low' | 'moderate' | 'high' | 'hazardous' | 'unavailable';
+
+export interface DispersionEvidence {
+  weatherUsable?: boolean;
+  isUsable?: boolean;
+  freshness?: 'FRESH' | 'RECENT' | 'STALE' | 'INVALID' | 'UNAVAILABLE' | string;
+  stagnationRisk?: 'Low' | 'Moderate' | 'Elevated' | 'Unknown' | string;
+  dispersionConditions?: 'Favorable' | 'Moderate' | 'Potentially Unfavorable' | 'Unknown' | string;
+}
+
 export interface ActionSlot {
   id: string;
   timeWindow: string;                // "07:00 - 09:00"
   period: 'morning' | 'afternoon' | 'evening' | 'night';
-  smogRisk: 'low' | 'moderate' | 'high' | 'hazardous';
+  smogRisk: SmogRiskTier;
   activityTitle: string;
   recommendedAction: string;
   exposureMitigation: string;        // How to protect personal lung intake
@@ -11,10 +21,15 @@ export interface ActionSlot {
   maskType: 'none' | 'cloth_mask' | 'n95_respirator';
   scientificRationale: string;
   category: 'commute' | 'outdoor' | 'indoor' | 'errand';
+  avgPm25?: number | null;
+  avgModelledAqi?: number | null;
+  isBestWindow?: boolean;
+  suitabilityTier?: 'Relative Minimum' | 'Acceptable with Precautions' | 'Limited' | 'Avoid Strenuous Outdoor' | 'Unavailable';
 }
 
 export interface IndoorProtocol {
   ventilationPermitted: boolean;
+  ventilationStatus?: 'favorable' | 'restricted' | 'telemetry_insufficient';
   ventilationReason: string;
   ventilationSafeHours: string[];
   purifierRunningMode: 'Off' | 'Auto' | 'Medium' | 'High (Continuous Recirculation)';
@@ -27,7 +42,7 @@ export interface DailyActionPlan {
   date: string;
   targetLocation: {
     name: string;
-    aqi: number;
+    aqi: number | null;
     category: string;
   };
   headlineAdvice: string;
@@ -37,6 +52,7 @@ export interface DailyActionPlan {
   aiProvenance: {
     model: string;
     deterministicSafetyEnginePassed: boolean;
+    validationStatus?: 'VERIFIED_PASSED' | 'SIMULATED_DEMO' | 'STALE_DATA' | 'UNVERIFIED_SOURCE' | 'INSUFFICIENT_TELEMETRY';
     generatedAt: string;
   };
 }

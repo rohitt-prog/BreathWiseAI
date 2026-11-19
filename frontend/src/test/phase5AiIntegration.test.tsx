@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { apiClient, DEFAULT_DEMO_INSIGHTS } from '../services/apiClient';
+import { MOCK_AIR_QUALITY_DATA } from '../services/mockData';
 import { AIInsightResponse } from '../types/ai';
 
 // Mock apiClient methods
@@ -35,6 +36,57 @@ describe('Phase 5 — Google Gemini AI Intelligence & Deterministic Safety Integ
       }
     });
     vi.clearAllMocks();
+    vi.mocked(apiClient.resolveAirQualityData).mockResolvedValue({
+      isLive: true,
+      data: {
+        station: {
+          id: 'del_anand_vihar',
+          name: 'Delhi Anand Vihar',
+          city: 'Delhi',
+          coordinates: { lat: 28.6508, lon: 77.3152 },
+        },
+        aqi: 283,
+        category: 'Poor',
+        dominantPollutant: 'PM2.5',
+        provenance: {
+          dataSource: 'OPEN_METEO_MODELLED',
+          qualityStatus: 'MODELLED_APPROXIMATION',
+          recordedAt: new Date().toISOString(),
+          retrievalFreshness: 'FRESH',
+          modelRunFreshness: 'RECENT',
+          forecastValidity: 'CURRENT_PERIOD',
+          indexSystem: 'Indian NAQI',
+          isVerified: true,
+        },
+        pollutants: {
+          'PM2.5': {
+            code: 'PM2.5',
+            name: 'Fine Particulates',
+            concentration: 85.0,
+            unit: 'µg/m³',
+            subIndex: 283,
+            category: 'Poor',
+          },
+        },
+        weather: {
+          temperatureC: 22,
+          relativeHumidity: 60,
+          windSpeedKmh: 10,
+          windDirectionDegrees: 180,
+          windDirectionCardinal: 'S',
+          boundaryLayerHeightMeters: 600,
+          stagnationRisk: 'Low',
+          dispersionConditions: 'Favorable',
+          stagnationDescription: 'Adequate dispersion',
+        },
+        forecast: [],
+        healthAdvisory: {
+          summary: 'High particulates',
+          maskRecommendation: 'Wear N95',
+          outdoorActivityLevel: 'Avoid outdoor exercise',
+        },
+      },
+    });
   });
 
   const renderDashboard = () => {
@@ -205,6 +257,10 @@ describe('Phase 5 — Google Gemini AI Intelligence & Deterministic Safety Integ
   });
 
   it('renders Curated Demo Guidance when backend is offline', async () => {
+    vi.mocked(apiClient.resolveAirQualityData).mockResolvedValue({
+      isLive: false,
+      data: MOCK_AIR_QUALITY_DATA['del_anand_vihar'],
+    });
     vi.mocked(apiClient.fetchAIInsights).mockResolvedValue(DEFAULT_DEMO_INSIGHTS);
 
     renderDashboard();
