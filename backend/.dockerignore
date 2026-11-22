@@ -1,0 +1,56 @@
+# ==============================================================================
+# BreatheWise AI — Backend Docker Build Context Exclusions
+# ==============================================================================
+
+# Environment variable files and secrets
+.env
+.env.*
+*.env
+*.pem
+*.key
+serviceAccountKey.json
+firebase-credentials.json
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python bytecode and runtime caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Test files, test caches, and coverage artifacts
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+pytest.ini
+
+# Type checking and linter caches
+.mypy_cache/
+.ruff_cache/
+
+# Git metadata
+.git/
+.gitignore
+.github/
+
+# IDE, OS, and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local logs and temporary directories
+*.log
+tmp/
+temp/
+
+# Host verification scripts not needed in container image
+verify_live.py

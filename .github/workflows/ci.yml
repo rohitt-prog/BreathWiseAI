@@ -67,3 +67,352 @@ jobs:
 
       - name: Run pytest test suite
         run: pytest tests -v
+
+  container-acceptance:
+    name: Container Acceptance & Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose configuration
+        run: |
+          echo "Validating docker-compose.yml syntax with Docker Compose CLI..."
+          docker compose config --quiet
+
+          echo "Validating structural service topology via resolved Compose JSON..."
+          docker compose config --format json > /tmp/compose-resolved.json
+          python3 -c '
+          import json, sys
+          with open("/tmp/compose-resolved.json") as f:
+              cfg = json.load(f)
+
+          services = cfg.get("services", {})
+          assert "backend" in services, "Missing backend service in resolved Compose configuration"
+          assert "frontend" in services, "Missing frontend service in resolved Compose configuration"
+
+          # Verify backend has no host-published ports
+          backend_ports = services["backend"].get("ports", [])
+          if backend_ports:
+              print(f"ERROR: Backend exposes host ports: {backend_ports}", file=sys.stderr)
+              sys.exit(1)
+          print("PASS: Backend port is internal-only (not host-published)")
+
+          # Verify frontend publishes host port 8080 to container port 8080
+          frontend_ports = services["frontend"].get("ports", [])
+          port_published = any(
+              (isinstance(p, dict) and p.get("target") == 8080 and str(p.get("published", "")) == "8080")
+              or (isinstance(p, str) and "8080:8080" in p)
+              for p in frontend_ports
+          )
+          if not port_published:
+              print(f"ERROR: Frontend port mapping 8080:8080 not found in {frontend_ports}", file=sys.stderr)
+              sys.exit(1)
+          print("PASS: Frontend host port mapping 8080:8080 verified")
+          '
+
+      - name: Build production container images
+        run: |
+          echo "Building production multi-stage container images..."
+          docker compose build
+
+      - name: Start container stack
+        run: |
+          echo "Launching BreatheWise AI container stack..."
+          docker compose up -d
+
+      - name: Wait for services to become healthy
+        run: |
+          echo "Resolving backend container ID..."
+          BACKEND_CID=$(docker compose ps -q backend)
+          if [ -z "$BACKEND_CID" ]; then
+            echo "ERROR: Failed to resolve backend container ID"
+            docker compose ps -a
+            exit 1
+          fi
+          echo "Resolved backend container ID: $BACKEND_CID"
+
+          echo "Waiting for backend container to report healthy..."
+          STATUS="starting"
+          for i in $(seq 1 30); do
+            STATUS=$(docker inspect --format='{{json .State.Health.Status}}' "$BACKEND_CID" 2>/dev/null || echo '"unknown"')
+            echo "Attempt $i: Backend health status is $STATUS"
+            if [ "$STATUS" = '"healthy"' ]; then
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$STATUS" != '"healthy"' ]; then
+            echo "ERROR: Backend container failed to reach healthy state within 60s"
+            docker compose logs backend
+            exit 1
+          fi
+
+          echo "Waiting for frontend Nginx availability on port 8080..."
+          HTTP_CODE="000"
+          CURL_EXIT=1
+          for i in $(seq 1 15); do
+            CURL_EXIT=0
+            HTTP_CODE=$(curl --connect-timeout 2 --max-time 5 -s -o /dev/null -w "%{http_code}" http://localhost:8080/health) || CURL_EXIT=$?
+            HTTP_CODE="${HTTP_CODE:-000}"
+            echo "Attempt $i: Frontend health proxy returned HTTP $HTTP_CODE (curl exit: $CURL_EXIT)"
+            if [ "$CURL_EXIT" -eq 0 ] && [ "$HTTP_CODE" = "200" ]; then
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$CURL_EXIT" -ne 0 ] || [ "$HTTP_CODE" != "200" ]; then
+            echo "ERROR: Frontend failed to proxy /health within 30s (final HTTP code: $HTTP_CODE, final curl exit: $CURL_EXIT)"
+            docker compose logs
+            exit 1
+          fi
+
+      - name: Verify container runtime security
+        run: |
+          BACKEND_CID=$(docker compose ps -q backend)
+          FRONTEND_CID=$(docker compose ps -q frontend)
+
+          if [ -z "$BACKEND_CID" ]; then
+            echo "ERROR: Failed to resolve backend container ID from docker compose ps"
+            docker compose ps -a
+            exit 1
+          fi
+          if [ -z "$FRONTEND_CID" ]; then
+            echo "ERROR: Failed to resolve frontend container ID from docker compose ps"
+            docker compose ps -a
+            exit 1
+          fi
+          echo "Resolved backend container ID: $BACKEND_CID"
+          echo "Resolved frontend container ID: $FRONTEND_CID"
+
+          echo "Verifying backend non-root execution (UID 10001)..."
+          BACKEND_UID=$(docker compose exec -T backend id -u)
+          if [ "$BACKEND_UID" != "10001" ]; then
+            echo "ERROR: Backend running with unexpected UID: $BACKEND_UID"
+            exit 1
+          fi
+          echo "PASS: Backend runs as UID 10001 (appuser)"
+
+          echo "Verifying backend read-only root filesystem..."
+          IS_RO=$(docker inspect "$BACKEND_CID" --format='{{.HostConfig.ReadonlyRootfs}}')
+          if [ "$IS_RO" != "true" ]; then
+            echo "ERROR: Backend root filesystem is not read-only"
+            exit 1
+          fi
+          echo "PASS: Backend rootfs is read-only"
+
+          echo "Verifying frontend non-root execution (UID 101)..."
+          FRONTEND_UID=$(docker compose exec -T frontend id -u)
+          if [ "$FRONTEND_UID" != "101" ]; then
+            echo "ERROR: Frontend running with unexpected UID: $FRONTEND_UID"
+            exit 1
+          fi
+          echo "PASS: Frontend runs as UID 101 (nginx)"
+
+          echo "Verifying containers operate unprivileged..."
+          BACKEND_PRIV=$(docker inspect "$BACKEND_CID" --format='{{.HostConfig.Privileged}}')
+          FRONTEND_PRIV=$(docker inspect "$FRONTEND_CID" --format='{{.HostConfig.Privileged}}')
+          if [ "$BACKEND_PRIV" != "false" ] || [ "$FRONTEND_PRIV" != "false" ]; then
+            echo "ERROR: Unexpected privileged container mode detected"
+            exit 1
+          fi
+          echo "PASS: Both containers operate unprivileged"
+
+          echo "Verifying backend port 8000 is shielded from direct host access..."
+          CURL_EXIT=0
+          SHIELD_STATUS=$(curl --connect-timeout 2 --max-time 5 -s -o /dev/null -w "%{http_code}" http://localhost:8000/health) || CURL_EXIT=$?
+          SHIELD_STATUS="${SHIELD_STATUS:-000}"
+
+          if [ "$CURL_EXIT" -eq 7 ]; then
+            echo "PASS: Backend port 8000 is properly shielded (connection refused as expected, curl exit: 7)"
+          elif [ "$CURL_EXIT" -eq 0 ]; then
+            echo "ERROR: Backend port 8000 is directly reachable on host! (returned HTTP $SHIELD_STATUS)"
+            exit 1
+          else
+            echo "ERROR: Unexpected curl result while testing port 8000 shielding (curl exit: $CURL_EXIT, HTTP status: $SHIELD_STATUS). Expected exit code 7 (connection refused)."
+            exit 1
+          fi
+
+      - name: Verify frontend SPA routes and HTML shell fallback delivery
+        run: |
+          # Note: This tests Nginx SPA fallback (try_files $uri $uri/ /index.html) and HTML shell delivery.
+          # It validates HTTP 200 and presence of <div id="root"></div> via a single GET request per route;
+          # it does not execute client-side JavaScript or perform React hydration.
+          for ROUTE in "" "dashboard" "planner" "indoor" "alternatives" "settings"; do
+            URL="http://localhost:8080/$ROUTE"
+            echo "Testing HTML shell delivery for route: $URL"
+            CURL_EXIT=0
+            STATUS=$(curl --connect-timeout 3 --max-time 10 -s -o /tmp/route-body.html -w "%{http_code}" "$URL") || CURL_EXIT=$?
+            STATUS="${STATUS:-000}"
+
+            if [ "$CURL_EXIT" -ne 0 ]; then
+              echo "ERROR: Connection failed for route $URL (curl exit: $CURL_EXIT)"
+              exit 1
+            fi
+            if [ "$STATUS" != "200" ]; then
+              echo "ERROR: Route $URL returned HTTP $STATUS instead of 200"
+              cat /tmp/route-body.html
+              exit 1
+            fi
+            grep -q 'id="root"' /tmp/route-body.html || {
+              echo "ERROR: Route $URL response did not contain expected SPA HTML mount point (<div id=\"root\">)"
+              head -n 20 /tmp/route-body.html
+              exit 1
+            }
+            echo "PASS: Route $URL delivered SPA HTML shell via single GET (HTTP 200 with id=\"root\")"
+          done
+          echo "PASS: All tested SPA routes successfully verified for HTML shell fallback delivery"
+
+      - name: Verify static asset caching and 404 behavior
+        run: |
+          echo "Discovering built JavaScript asset in frontend container via shell glob..."
+          EXEC_EXIT=0
+          ASSET_NAME=$(docker compose exec -T frontend sh -c '
+            for f in /usr/share/nginx/html/assets/*.js; do
+              if [ -f "$f" ]; then
+                basename "$f"
+                exit 0
+              fi
+            done
+            exit 1
+          ') || EXEC_EXIT=$?
+          ASSET_NAME=$(echo "$ASSET_NAME" | tr -d "\r\n[:space:]")
+
+          if [ "$EXEC_EXIT" -ne 0 ] || [ -z "$ASSET_NAME" ] || [ "$ASSET_NAME" = "*.js" ]; then
+            echo "ERROR: Could not locate built JavaScript asset in frontend container (exec exit: $EXEC_EXIT, found: '$ASSET_NAME')"
+            exit 1
+          fi
+          echo "Testing built asset via real GET: /assets/$ASSET_NAME"
+
+          CURL_EXIT=0
+          ASSET_STATUS=$(curl --connect-timeout 3 --max-time 10 -s -D /tmp/asset-headers.txt -o /tmp/asset-body.js -w "%{http_code}" "http://localhost:8080/assets/$ASSET_NAME") || CURL_EXIT=$?
+          ASSET_STATUS="${ASSET_STATUS:-000}"
+
+          if [ "$CURL_EXIT" -ne 0 ]; then
+            echo "ERROR: curl connection failed for /assets/$ASSET_NAME (exit code: $CURL_EXIT)"
+            exit 1
+          fi
+          if [ "$ASSET_STATUS" != "200" ]; then
+            echo "ERROR: GET /assets/$ASSET_NAME returned HTTP $ASSET_STATUS instead of 200"
+            exit 1
+          fi
+          if [ ! -s /tmp/asset-body.js ]; then
+            echo "ERROR: Downloaded asset body /tmp/asset-body.js is empty"
+            exit 1
+          fi
+          grep -qi "cache-control:.*immutable" /tmp/asset-headers.txt || {
+            echo "ERROR: Asset response missing immutable Cache-Control header"
+            cat /tmp/asset-headers.txt
+            exit 1
+          }
+          echo "PASS: Real GET on /assets/$ASSET_NAME returned HTTP 200, valid bundle content, and immutable Cache-Control header"
+
+          echo "Testing nonexistent asset under /assets/..."
+          MISSING_EXIT=0
+          MISSING_CODE=$(curl --connect-timeout 3 --max-time 10 -s -o /dev/null -w "%{http_code}" "http://localhost:8080/assets/nonexistent-chunk.js") || MISSING_EXIT=$?
+          MISSING_CODE="${MISSING_CODE:-000}"
+          if [ "$MISSING_EXIT" -ne 0 ]; then
+            echo "ERROR: curl connection failed while testing nonexistent asset (exit code: $MISSING_EXIT)"
+            exit 1
+          fi
+          if [ "$MISSING_CODE" != "404" ]; then
+            echo "ERROR: Missing asset returned HTTP $MISSING_CODE instead of 404"
+            exit 1
+          fi
+          echo "PASS: Missing asset correctly returns HTTP 404"
+
+      - name: Verify API reverse proxy and error contracts
+        run: |
+          echo "Testing backend health via proxy: http://localhost:8080/health"
+          CURL_EXIT=0
+          STATUS=$(curl --connect-timeout 3 --max-time 10 -s -o /tmp/health-body.json -w "%{http_code}" http://localhost:8080/health) || CURL_EXIT=$?
+          STATUS="${STATUS:-000}"
+          if [ "$CURL_EXIT" -ne 0 ]; then
+            echo "ERROR: Connection failed to http://localhost:8080/health (curl exit code: $CURL_EXIT)"
+            exit 1
+          fi
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: /health returned HTTP $STATUS (expected 200)"
+            cat /tmp/health-body.json
+            exit 1
+          fi
+          python3 -c '
+          import json
+          with open("/tmp/health-body.json") as f:
+              data = json.load(f)
+          assert data.get("status") == "healthy", f"Expected status healthy, got {data}"
+          assert "version" in data, f"Missing version field in {data}"
+          '
+          echo "PASS: /health returned HTTP 200 with valid JSON status payload"
+
+          echo "Testing providers status: http://localhost:8080/api/v1/providers/status"
+          CURL_EXIT=0
+          STATUS=$(curl --connect-timeout 3 --max-time 10 -s -o /tmp/providers-body.json -w "%{http_code}" http://localhost:8080/api/v1/providers/status) || CURL_EXIT=$?
+          STATUS="${STATUS:-000}"
+          if [ "$CURL_EXIT" -ne 0 ]; then
+            echo "ERROR: Connection failed to http://localhost:8080/api/v1/providers/status (curl exit code: $CURL_EXIT)"
+            exit 1
+          fi
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: /api/v1/providers/status returned HTTP $STATUS (expected 200)"
+            cat /tmp/providers-body.json
+            exit 1
+          fi
+          python3 -c '
+          import json
+          with open("/tmp/providers-body.json") as f:
+              data = json.load(f)
+          assert "providers" in data, f"Missing providers key in {data}"
+          assert len(data["providers"]) > 0, f"Providers list is empty in {data}"
+          '
+          echo "PASS: /api/v1/providers/status returned HTTP 200 with valid provider registry"
+
+          echo "Testing schema validation error contract: latitude=999"
+          CURL_EXIT=0
+          STATUS=$(curl --connect-timeout 3 --max-time 10 -s -o /tmp/validation-error.json -w "%{http_code}" "http://localhost:8080/api/v1/air-quality/current?latitude=999&longitude=77.25") || CURL_EXIT=$?
+          STATUS="${STATUS:-000}"
+          if [ "$CURL_EXIT" -ne 0 ]; then
+            echo "ERROR: Connection failed to air-quality validation endpoint (curl exit code: $CURL_EXIT)"
+            exit 1
+          fi
+          if [ "$STATUS" != "422" ]; then
+            echo "ERROR: Expected HTTP 422 for invalid coordinates, got $STATUS"
+            cat /tmp/validation-error.json
+            exit 1
+          fi
+          python3 -c '
+          import json
+          with open("/tmp/validation-error.json") as f:
+              data = json.load(f)
+          assert isinstance(data, dict), f"Expected JSON object, got {type(data)}"
+          detail_field = data.get("details") or data.get("detail")
+          assert detail_field is not None, f"Missing detail/details field in validation error: {data}"
+          if isinstance(detail_field, dict):
+              errors = detail_field.get("errors", [])
+              assert len(errors) > 0, f"Empty errors list in details: {detail_field}"
+              assert any("latitude" in str(err) for err in errors), f"Latitude error not found in {errors}"
+          elif isinstance(detail_field, list):
+              assert len(detail_field) > 0, f"Empty detail list: {detail_field}"
+              assert any("latitude" in str(err) for err in detail_field), f"Latitude error not found in {detail_field}"
+          else:
+              assert "latitude" in str(detail_field), f"Latitude error not mentioned in detail: {detail_field}"
+          '
+          echo "PASS: Invalid coordinates returned HTTP 422 with structured JSON detail describing schema validation failure"
+
+      - name: Diagnostic logs on failure
+        if: failure()
+        run: |
+          echo "=== DOCKER COMPOSE PS ==="
+          docker compose ps -a || true
+          echo "=== BACKEND CONTAINER LOGS ==="
+          docker compose logs backend || true
+          echo "=== FRONTEND CONTAINER LOGS ==="
+          docker compose logs frontend || true
+
+      - name: Clean up container stack
+        if: always()
+        run: |
+          docker compose down -v --remove-orphans || true
