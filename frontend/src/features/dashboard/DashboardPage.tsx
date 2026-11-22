@@ -117,7 +117,7 @@ export const DashboardPage: React.FC = () => {
     <div className="space-y-6 sm:space-y-8">
 
       {/* Station Provenance Banner */}
-      <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300">
+      <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-slate-100 dark:bg-[#11141c] border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white">
             <Building2 className="w-4 h-4 text-emerald-600" />
@@ -133,7 +133,7 @@ export const DashboardPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold border text-[11px] ${badgeClasses}`}>
             {isVerifiedLive ? (
-              <Radio className={`w-3.5 h-3.5 animate-pulse ${isFreshModelled ? 'text-sky-600' : 'text-emerald-600'}`} />
+              <Radio className={`w-3.5 h-3.5 ${isFreshModelled ? 'text-sky-600' : 'text-emerald-600'}`} />
             ) : (
               <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
             )}
@@ -164,11 +164,11 @@ export const DashboardPage: React.FC = () => {
       </section>
 
       {/* Immediate Action Directives Banner (GenAI + Safety Engine) */}
-      <section className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-emerald-900 via-slate-900 to-slate-950 text-white shadow-lg space-y-4">
+      <section className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#11141c] text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 border-t-2 border-t-emerald-600 dark:border-t-emerald-500">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-emerald-400" />
-            <h3 className="font-bold text-base sm:text-lg">Today's Evidence-Grounded Directives</h3>
+            <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <h3 className="font-semibold text-base sm:text-lg text-slate-900 dark:text-white">Today's Evidence-Grounded Directives</h3>
           </div>
           {(() => {
             if (!isTelemetryEligibleForAI) {
@@ -273,7 +273,7 @@ export const DashboardPage: React.FC = () => {
 
         {/* AI Plain-Language Context Summary (Gated on eligibility) */}
         {!isTelemetryEligibleForAI ? (
-          <p className="text-xs sm:text-sm text-slate-300 border-l-2 border-amber-500/70 pl-3 py-0.5" data-testid="ai-summary-gated">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 border-l-2 border-amber-500/70 pl-3 py-0.5" data-testid="ai-summary-gated">
             {isDemo
               ? 'Current-condition AI insights are disabled in Demo Mode. Telemetry is simulated for demonstration purposes.'
               : isUnverified
@@ -283,11 +283,11 @@ export const DashboardPage: React.FC = () => {
               : 'Live telemetry is stale or expired. Current-condition AI directives are suspended until fresh atmospheric observations or model runs are received.'}
           </p>
         ) : isAIError ? (
-          <p className="text-xs sm:text-sm text-slate-300 border-l-2 border-amber-500/70 pl-3 py-0.5" data-testid="ai-summary-error">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 border-l-2 border-amber-500/70 pl-3 py-0.5" data-testid="ai-summary-error">
             AI synthesis unavailable due to service error. Standard deterministic safety rules remain active.
           </p>
         ) : activeAiInsights?.summary ? (
-          <p className="text-xs sm:text-sm text-slate-300 border-l-2 border-emerald-500/70 pl-3 py-0.5" data-testid="ai-summary-live">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 border-l-2 border-emerald-500/70 pl-3 py-0.5" data-testid="ai-summary-live">
             {activeAiInsights.summary}
           </p>
         ) : null}
@@ -295,12 +295,12 @@ export const DashboardPage: React.FC = () => {
         {/* Action Directives Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs sm:text-sm">
           {!isTelemetryEligibleForAI ? (
-            <div className="col-span-full p-3.5 sm:p-4 rounded-xl bg-slate-800/60 border border-slate-700/60 text-slate-300 text-xs sm:text-sm space-y-1" data-testid="ai-directives-gated">
-              <div className="flex items-center gap-2 font-semibold text-slate-200">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <div className="col-span-full p-3.5 sm:p-4 rounded-xl bg-slate-50 dark:bg-[#1a1e28] border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 text-xs sm:text-sm space-y-1" data-testid="ai-directives-gated">
+              <div className="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-200">
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
                 <span>Live Directives Suspended</span>
               </div>
-              <p className="text-slate-400 text-xs leading-relaxed">
+              <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">
                 {isDemo
                   ? 'Actionable health directives require verified live environmental telemetry. In demonstration mode, active schedule optimization and personal exposure recommendations are withheld.'
                   : isUnverified
@@ -312,17 +312,17 @@ export const DashboardPage: React.FC = () => {
             </div>
           ) : isAILoading ? (
             <>
-              <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50 animate-pulse h-28" />
-              <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50 animate-pulse h-28" />
-              <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50 animate-pulse h-28" />
+              <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-[#1a1e28] border border-slate-200 dark:border-slate-800 animate-pulse h-28" />
+              <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-[#1a1e28] border border-slate-200 dark:border-slate-800 animate-pulse h-28" />
+              <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-[#1a1e28] border border-slate-200 dark:border-slate-800 animate-pulse h-28" />
             </>
           ) : isAIError ? (
-            <div className="col-span-full p-3.5 sm:p-4 rounded-xl bg-slate-800/60 border border-slate-700/60 text-slate-300 text-xs sm:text-sm space-y-1" data-testid="ai-directives-error">
-              <div className="flex items-center gap-2 font-semibold text-amber-300">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <div className="col-span-full p-3.5 sm:p-4 rounded-xl bg-slate-50 dark:bg-[#1a1e28] border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 text-xs sm:text-sm space-y-1" data-testid="ai-directives-error">
+              <div className="flex items-center gap-2 font-semibold text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
                 <span>AI Service Error</span>
               </div>
-              <p className="text-slate-400 text-xs leading-relaxed">
+              <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">
                 Unable to reach AI intelligence engine. Deterministic safety rules remain active to prevent hazardous exposure.
               </p>
             </div>
@@ -330,41 +330,41 @@ export const DashboardPage: React.FC = () => {
             (activeAiInsights?.recommended_actions || []).map((action) => {
               const priorityColor =
                 action.priority === 'HIGH'
-                  ? 'text-rose-400 bg-rose-950/60 border-rose-800/60'
+                  ? 'text-rose-700 bg-rose-50 border-rose-200 dark:text-rose-300 dark:bg-rose-950/60 dark:border-rose-800/60'
                   : action.priority === 'MEDIUM'
-                  ? 'text-amber-400 bg-amber-950/60 border-amber-800/60'
-                  : 'text-sky-400 bg-sky-950/60 border-sky-800/60';
+                  ? 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/60 dark:border-amber-800/60'
+                  : 'text-sky-700 bg-sky-50 border-sky-200 dark:text-sky-300 dark:bg-sky-950/60 dark:border-sky-800/60';
 
               const categoryLabel = action.category.replace('_', ' ');
 
               return (
                 <div
                   key={action.action_id}
-                  className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 flex flex-col justify-between space-y-2 hover:border-slate-600 transition-colors"
+                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#1a1e28] border border-slate-200/80 dark:border-slate-800/80 flex flex-col justify-between space-y-2 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center justify-between gap-1">
-                      <span className="font-bold text-emerald-400 text-[11px] uppercase tracking-wider block truncate">
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-400 text-xs capitalize block truncate">
                         {categoryLabel}
                       </span>
                       <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border uppercase shrink-0 ${priorityColor}`}>
                         {action.priority}
                       </span>
                     </div>
-                    <p className="font-medium text-slate-100 text-xs sm:text-sm leading-snug">
+                    <p className="font-medium text-slate-900 dark:text-slate-100 text-xs sm:text-sm leading-snug">
                       {action.title}
                     </p>
-                    <p className="text-slate-300 text-xs leading-relaxed">
+                    <p className="text-slate-600 dark:text-slate-300 text-xs leading-relaxed">
                       {action.rationale}
                     </p>
                   </div>
 
                   {action.evidence_ids && action.evidence_ids.length > 0 && (
-                    <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-700/50">
+                    <div className="flex flex-wrap gap-1 pt-1.5 border-t border-slate-200/60 dark:border-slate-700/50">
                       {action.evidence_ids.map((eid) => (
                         <span
                           key={eid}
-                          className="text-[10px] font-mono text-slate-400 bg-slate-900/60 px-1.5 py-0.5 rounded border border-slate-700/40"
+                          className="text-[10px] font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-[#0b0d14] px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-800 tabular-nums"
                         >
                           {eid}
                         </span>
@@ -377,9 +377,9 @@ export const DashboardPage: React.FC = () => {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-800/80">
-          <div className="flex items-center gap-2 text-xs text-slate-300">
-            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
             <span>
               {isTelemetryEligibleForAI && aqData.aqi
                 ? `Outdoor cardiovascular exercise restricted under current AQI (${aqData.aqi}).`
@@ -399,7 +399,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* 8-Pollutant Breakout Grid */}
       <section>
-        <PollutantGrid pollutants={aqData.pollutants} />
+        <PollutantGrid pollutants={aqData.pollutants} dominantPollutant={aqData.dominantPollutant} />
       </section>
 
       {/* 12-Hour Smog Trajectory */}

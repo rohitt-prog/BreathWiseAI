@@ -8,6 +8,16 @@ export default {
   theme: {
     extend: {
       colors: {
+        surface: {
+          page: '#f5f7fa',
+          card: '#ffffff',
+          raised: '#eceff4',
+          dark: {
+            page: '#0b0d14',
+            card: '#11141c',
+            raised: '#1a1e28',
+          }
+        },
         aqi: {
           good: '#16A34A',          // 0 - 50 (Green)
           satisfactory: '#65A30D',  // 51 - 100 (Lime)

@@ -3,7 +3,7 @@ import { ShieldCheck, HeartHandshake, Info } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-[#090D16]/50 py-8 px-4 sm:px-6 lg:px-8 text-xs text-slate-500 dark:text-slate-400">
+    <footer className="mt-auto border-t border-slate-200/80 dark:border-slate-800/80 bg-white/50 dark:bg-[#0b0d14]/50 py-8 px-4 sm:px-6 lg:px-8 text-xs text-slate-500 dark:text-slate-400">
       <div className="max-w-7xl mx-auto space-y-6">
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

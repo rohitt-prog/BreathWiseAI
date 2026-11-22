@@ -19,7 +19,7 @@ export const AppShell: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#090D16] text-slate-900 dark:text-slate-100 transition-colors">
+    <div className="min-h-screen flex flex-col bg-[#f5f7fa] dark:bg-[#0b0d14] text-slate-900 dark:text-[#eef0f5] transition-colors">
       {/* Persistent Mode & Provenance Transparency Notice Banner */}
       {telemetryMode === 'demo' ? (
         <div 
@@ -27,7 +27,7 @@ export const AppShell: React.FC = () => {
           role="status"
           aria-label="Demo Mode Notice"
         >
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" aria-hidden="true"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" aria-hidden="true"></span>
           <span>
             <strong>DEMO MODE</strong> — Simulated environmental data. Live CPCB and OpenAQ integration is not connected.
           </span>
@@ -38,7 +38,7 @@ export const AppShell: React.FC = () => {
           role="status"
           aria-label="Live Telemetry Notice"
         >
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" aria-hidden="true"></span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" aria-hidden="true"></span>
           <span>
             <strong>LIVE TELEMETRY</strong> — Real-time atmospheric chemistry model active (Open-Meteo CAMS). Live CPCB and OpenAQ sensor ingestion is not connected.
           </span>

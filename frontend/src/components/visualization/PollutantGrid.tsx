@@ -5,16 +5,17 @@ import clsx from 'clsx';
 
 interface PollutantGridProps {
   pollutants: Record<string, PollutantDetail>;
+  dominantPollutant?: string | null;
 }
 
-export const PollutantGrid: React.FC<PollutantGridProps> = ({ pollutants }) => {
+export const PollutantGrid: React.FC<PollutantGridProps> = ({ pollutants, dominantPollutant }) => {
   const pollutantKeys = ['PM2.5', 'PM10', 'NO2', 'SO2', 'CO', 'O3', 'NH3', 'Pb'];
 
   return (
-    <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#131B2E] border border-slate-200 dark:border-slate-800 shadow-sm">
+    <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#11141c] border border-slate-200 dark:border-slate-800 shadow-sm border-t-2 border-t-slate-300 dark:border-t-slate-700">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 mb-4">
         <div>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+          <h3 className="text-sm font-semibold tracking-wide text-slate-800 dark:text-slate-200">
             India NAQI 8-Pollutant Breakout
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -33,16 +34,31 @@ export const PollutantGrid: React.FC<PollutantGridProps> = ({ pollutants }) => {
 
           const meta = item.subIndex ? getAQIMetadata(item.subIndex) : null;
           const percentage = item.subIndex ? Math.min(100, (item.subIndex / 500) * 100) : 0;
+          const isDominant = Boolean(
+            dominantPollutant && (key === dominantPollutant || item.code === dominantPollutant)
+          );
 
           return (
             <div
               key={key}
-              className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 flex flex-col justify-between"
+              className={clsx(
+                'p-3 rounded-xl flex flex-col justify-between transition-colors',
+                isDominant
+                  ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-2 border-emerald-500/60 dark:border-emerald-500/50 shadow-sm'
+                  : 'bg-slate-50 dark:bg-[#1a1e28] border border-slate-200/80 dark:border-slate-800/80'
+              )}
             >
               <div className="flex items-center justify-between">
-                <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-                  {item.code}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-sm text-slate-900 dark:text-white">
+                    {item.code}
+                  </span>
+                  {isDominant && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                      Dominant
+                    </span>
+                  )}
+                </div>
                 {meta && (
                   <span className={clsx('text-[10px] font-bold px-1.5 py-0.5 rounded border', meta.badgeClass)}>
                     {meta.category}
@@ -51,7 +67,7 @@ export const PollutantGrid: React.FC<PollutantGridProps> = ({ pollutants }) => {
               </div>
 
               <div className="my-2">
-                <div className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                <div className="text-lg font-bold text-slate-900 dark:text-slate-100 tabular-nums">
                   {item.concentration}
                   <span className="ml-1 text-xs font-normal text-slate-500">{item.unit}</span>
                 </div>
@@ -71,7 +87,7 @@ export const PollutantGrid: React.FC<PollutantGridProps> = ({ pollutants }) => {
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-slate-400">
                   <span>Sub-index</span>
-                  <span className="font-bold text-slate-700 dark:text-slate-300">
+                  <span className="font-bold text-slate-700 dark:text-slate-300 tabular-nums">
                     {item.subIndex ?? 'N/A'}
                   </span>
                 </div>
