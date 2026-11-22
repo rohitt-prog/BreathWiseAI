@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp, FirebaseApp, FirebaseOptions } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import type { Firestore } from 'firebase/firestore';
 
 /**
  * Validates whether the required Firebase Web SDK environment variables are present
@@ -35,17 +35,17 @@ const getFirebaseConfig = (): FirebaseOptions => ({
 let firebaseApp: FirebaseApp | null = null;
 let firebaseAuth: Auth | null = null;
 let firebaseDb: Firestore | null = null;
+let firestoreInitPromise: Promise<Firestore | null> | null = null;
 
+// Eagerly initialize Firebase App and Auth to prevent UI flicker and maintain session state
 if (isFirebaseConfigured()) {
   try {
     firebaseApp = getApps().length === 0 ? initializeApp(getFirebaseConfig()) : getApp();
     firebaseAuth = getAuth(firebaseApp);
-    firebaseDb = getFirestore(firebaseApp);
   } catch (error) {
     console.warn('[Firebase] Initialization failed:', error);
     firebaseApp = null;
     firebaseAuth = null;
-    firebaseDb = null;
   }
 }
 
@@ -60,8 +60,44 @@ export const getFirebaseApp = (): FirebaseApp | null => firebaseApp;
 export const getFirebaseAuth = (): Auth | null => firebaseAuth;
 
 /**
- * Returns the initialized Firestore Database instance, or null if unconfigured.
+ * Returns the initialized Firestore Database instance, or null if not yet initialized.
+ * Synchronous and backward-compatible with existing test spies.
  */
 export const getFirebaseDb = (): Firestore | null => firebaseDb;
+
+/**
+ * Asynchronously and lazily initializes Firestore on demand.
+ * Dynamically imports firebase/firestore only when invoked.
+ * Safe against concurrent initialization races.
+ */
+export const initFirestore = async (): Promise<Firestore | null> => {
+  if (!isFirebaseConfigured() || !firebaseApp) {
+    return null;
+  }
+
+  if (firebaseDb) {
+    return firebaseDb;
+  }
+
+  if (firestoreInitPromise) {
+    return firestoreInitPromise;
+  }
+
+  firestoreInitPromise = (async () => {
+    try {
+      const { getFirestore } = await import('firebase/firestore');
+      firebaseDb = getFirestore(firebaseApp);
+      return firebaseDb;
+    } catch (error) {
+      console.warn('[Firebase Firestore] Lazy initialization failed:', error);
+      firebaseDb = null;
+      return null;
+    } finally {
+      firestoreInitPromise = null;
+    }
+  })();
+
+  return firestoreInitPromise;
+};
 
 export { firebaseApp, firebaseAuth, firebaseDb };

@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = Field(default="gemini-2.5-flash", description="Supported Gemini Flash model identifier")
     GEMINI_TIMEOUT_SECONDS: float = Field(default=12.0, description="Gemini API timeout in seconds")
 
+    # AI Insights Rate Limiting Configuration (Phase 8.4A)
+    AI_RATE_LIMIT_REQUESTS: int = Field(default=10, ge=1, description="Maximum allowed AI insights requests per IP per window")
+    AI_RATE_LIMIT_WINDOW_SECONDS: int = Field(default=60, ge=1, description="Rate limit time window in seconds")
+    AI_RATE_LIMIT_ENABLED: bool = Field(default=True, description="Enable/disable AI endpoint rate limiting")
+
     model_config = SettingsConfigDict(
         env_file=ROOT_ENV_PATH,
         env_file_encoding="utf-8",

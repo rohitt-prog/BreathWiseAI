@@ -1,17 +1,29 @@
-import {
-  doc,
-  getDoc,
-  setDoc,
-  serverTimestamp,
-  Firestore,
-} from 'firebase/firestore';
-import { getFirebaseDb, isFirebaseConfigured } from './firebase';
+import type { Firestore } from 'firebase/firestore';
+import { getFirebaseDb, initFirestore, isFirebaseConfigured } from './firebase';
 import { UserProfileData, PersistedPreferences, UserProfileDocument } from '../types/firestore';
 import { DEFAULT_USER_PREFERENCES } from '../types/user';
 
 /**
+ * Helper to dynamically load Firestore SDK and obtain the database instance on demand.
+ * Checks whether Firestore is already initialized (or provided by test mocks),
+ * otherwise initializes it asynchronously.
+ */
+const loadFirestoreDeps = async () => {
+  let db: Firestore | null = getFirebaseDb();
+  if (!db) {
+    db = await initFirestore();
+  }
+  if (!db) {
+    return null;
+  }
+  const { doc, getDoc, setDoc, serverTimestamp } = await import('firebase/firestore');
+  return { db, doc, getDoc, setDoc, serverTimestamp };
+};
+
+/**
  * Sanitizes and maps Firestore errors to safe user-facing error messages
  * without leaking internal database paths or credentials.
+ * Pure function: does not require or load the Firestore SDK.
  */
 export const mapFirestoreError = (error: unknown): string => {
   if (!error) return 'An unknown database error occurred.';
@@ -37,7 +49,7 @@ export const mapFirestoreError = (error: unknown): string => {
 };
 
 /**
- * Fetches the user profile and preferences document from Firestore.
+ * Fetches the user profile and preferences document from Firestore on demand.
  * Returns null if unconfigured or if document does not exist.
  */
 export const getUserProfile = async (uid: string): Promise<UserProfileDocument | null> => {
@@ -45,11 +57,12 @@ export const getUserProfile = async (uid: string): Promise<UserProfileDocument |
     return null;
   }
 
-  const db: Firestore | null = getFirebaseDb();
-  if (!db) {
+  const deps = await loadFirestoreDeps();
+  if (!deps) {
     return null;
   }
 
+  const { db, doc, getDoc } = deps;
   const userDocRef = doc(db, 'users', uid);
   const snap = await getDoc(userDocRef);
 
@@ -94,7 +107,7 @@ export const getUserProfile = async (uid: string): Promise<UserProfileDocument |
 };
 
 /**
- * Creates an initial user document in Firestore with profile data and initial preferences.
+ * Creates an initial user document in Firestore on demand with profile data and initial preferences.
  */
 export const createUserProfile = async (
   uid: string,
@@ -103,13 +116,14 @@ export const createUserProfile = async (
 ): Promise<void> => {
   if (!uid) throw new Error('Cannot create profile without UID.');
 
-  const db: Firestore | null = getFirebaseDb();
-  if (!db || !isFirebaseConfigured()) {
+  const deps = await loadFirestoreDeps();
+  if (!deps || !isFirebaseConfigured()) {
     const error = new Error('Firestore is not configured.');
     (error as any).code = 'firestore/unconfigured';
     throw error;
   }
 
+  const { db, doc, setDoc, serverTimestamp } = deps;
   const userDocRef = doc(db, 'users', uid);
 
   const initialDoc: UserProfileDocument = {
@@ -127,7 +141,7 @@ export const createUserProfile = async (
 };
 
 /**
- * Updates a user's preferences in Firestore without overwriting profile or createdAt.
+ * Updates a user's preferences in Firestore on demand without overwriting profile or createdAt.
  */
 export const updateUserPreferencesInCloud = async (
   uid: string,
@@ -135,13 +149,14 @@ export const updateUserPreferencesInCloud = async (
 ): Promise<void> => {
   if (!uid) throw new Error('Cannot update preferences without UID.');
 
-  const db: Firestore | null = getFirebaseDb();
-  if (!db || !isFirebaseConfigured()) {
+  const deps = await loadFirestoreDeps();
+  if (!deps || !isFirebaseConfigured()) {
     const error = new Error('Firestore is not configured.');
     (error as any).code = 'firestore/unconfigured';
     throw error;
   }
 
+  const { db, doc, setDoc, serverTimestamp } = deps;
   const userDocRef = doc(db, 'users', uid);
 
   await setDoc(

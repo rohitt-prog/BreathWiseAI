@@ -37,3 +37,17 @@ class ProviderConfigurationError(BreatheWiseException):
             status_code=501,
             details={"provider": provider, "status": "NOT_CONFIGURED"}
         )
+
+
+class RateLimitExceededError(BreatheWiseException):
+    """Raised when an API endpoint rate limit is exceeded."""
+    def __init__(
+        self,
+        message: str = "Rate limit exceeded. Please try again later.",
+        retry_after: int = 60,
+        details: Optional[Dict[str, Any]] = None
+    ):
+        details_dict = details or {}
+        details_dict.setdefault("retry_after", retry_after)
+        super().__init__(message=message, status_code=429, details=details_dict)
+        self.retry_after = retry_after

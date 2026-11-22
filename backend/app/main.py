@@ -6,7 +6,12 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 from .core.config import settings
-from .core.exceptions import BreatheWiseException, CoordinateValidationError, ProviderUnavailableError
+from .core.exceptions import (
+    BreatheWiseException,
+    CoordinateValidationError,
+    ProviderUnavailableError,
+    RateLimitExceededError
+)
 from .core.logging import logger
 from .api.routes.health import router as health_router
 from .api import api_v1_router
@@ -41,6 +46,22 @@ def create_application() -> FastAPI:
     )
 
     # Custom Exception Handlers
+    @app.exception_handler(RateLimitExceededError)
+    async def rate_limit_handler(request: Request, exc: RateLimitExceededError):
+        logger.warning("Rate limit exceeded on %s: %s (retry_after=%ds)", request.url.path, exc.message, exc.retry_after)
+        headers = {"Retry-After": str(exc.retry_after)} if exc.retry_after is not None else {}
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={
+                "error": exc.__class__.__name__,
+                "message": exc.message,
+                "status_code": 429,
+                "details": exc.details,
+                "timestamp": exc.timestamp
+            },
+            headers=headers
+        )
+
     @app.exception_handler(CoordinateValidationError)
     async def coordinate_validation_handler(request: Request, exc: CoordinateValidationError):
         logger.warning("Coordinate validation error on %s: %s", request.url.path, exc.message)

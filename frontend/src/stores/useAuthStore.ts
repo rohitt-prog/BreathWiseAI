@@ -110,8 +110,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (doc) {
         // Hydrate cloud preferences into application state
-        useAppStore.getState().setUserPreferences(doc.preferences);
-        if (doc.preferences.theme) {
+        if (doc.preferences) {
+          useAppStore.getState().setUserPreferences(doc.preferences);
+        }
+        if (doc.preferences?.theme) {
           useAppStore.getState().setTheme(doc.preferences.theme);
         }
       } else {

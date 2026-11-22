@@ -4,14 +4,19 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.core.cache import telemetry_cache
+from app.core.rate_limiter import ai_rate_limiter
 
 
 @pytest_asyncio.fixture(autouse=True)
 async def clear_backend_cache():
-    """Autouse fixture ensuring clean cache state for each test case."""
+    """Autouse fixture ensuring clean cache and rate limiter state for each test case."""
     await telemetry_cache.clear()
+    await ai_rate_limiter.clear()
+    ai_rate_limiter.set_time_provider(None)
     yield
     await telemetry_cache.clear()
+    await ai_rate_limiter.clear()
+    ai_rate_limiter.set_time_provider(None)
 
 
 @pytest_asyncio.fixture
